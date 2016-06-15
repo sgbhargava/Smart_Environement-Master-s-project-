@@ -157,7 +157,7 @@ void period_1Hz(void)
 	}
 	v_cell = vcellMAX17043();
 	percentage_cell = percentMAX17043();
-	printf (" Battery voltage = %02f\t precentage left = %02f\%\n",v_cell, percentage_cell );
+	printf (" Battery voltage = %.02f\t precentage left = %.02f\%\n",v_cell, percentage_cell );
 
 }
 

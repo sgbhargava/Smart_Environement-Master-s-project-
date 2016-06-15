@@ -25,6 +25,9 @@
  */
 #include "tasks.hpp"
 #include "examples/examples.hpp"
+#include "i2c2.hpp"
+#include "stdlib.h"
+
 
 /**
  * The main() creates tasks or "threads".  See the documentation of scheduler_task class at scheduler_task.hpp
@@ -52,13 +55,16 @@ int main(void)
      * such that it can save remote control codes to non-volatile memory.  IR remote
      * control codes can be learned by typing the "learn" terminal command.
      */
+	//set p0.0 as input
+	//xTaskCreate(fuel_guage_task, (signed char*)"fuel_guage_task", STACK_BYTES(2048, 0, 1, 0));
+
     scheduler_add_task(new terminalTask(PRIORITY_HIGH));
 
     /* Consumes very little CPU, but need highest priority to handle mesh network ACKs */
     scheduler_add_task(new wirelessTask(PRIORITY_CRITICAL));
 
     /* Change "#if 0" to "#if 1" to run period tasks; @see period_callbacks.cpp */
-    #if 0
+    #if 1
     scheduler_add_task(new periodicSchedulerTask());
     #endif
 

@@ -25,6 +25,11 @@
  */
 #include "tasks.hpp"
 #include "examples/examples.hpp"
+#include "i2c2.hpp"
+#include "stdio.h"
+#include "math.h"
+#include "utilities.h"
+#include "uart2.hpp"
 
 /**
  * The main() creates tasks or "threads".  See the documentation of scheduler_task class at scheduler_task.hpp
@@ -40,6 +45,7 @@
  *        In either case, you should avoid using this bus or interfacing to external components because
  *        there is no semaphore configured for this bus and it should be used exclusively by nordic wireless.
  */
+
 int main(void)
 {
     /**
@@ -56,6 +62,17 @@ int main(void)
 
     /* Consumes very little CPU, but need highest priority to handle mesh network ACKs */
     scheduler_add_task(new wirelessTask(PRIORITY_CRITICAL));
+
+    scheduler_add_task(new TemperaturePressureSensorTask(PRIORITY_MEDIUM));
+
+    scheduler_add_task(new UVLightIRSensorTask(PRIORITY_MEDIUM));
+
+    scheduler_add_task(new HumiditySensorTask(PRIORITY_MEDIUM));
+
+    scheduler_add_task(new C02SensorTask(PRIORITY_MEDIUM));
+#if 1
+    scheduler_add_task(new PrintSensorTask(PRIORITY_MEDIUM));
+#endif
 
     /* Change "#if 0" to "#if 1" to run period tasks; @see period_callbacks.cpp */
     #if 0

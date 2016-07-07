@@ -27,12 +27,19 @@
 #include "soft_timer.hpp"
 #include "command_handler.hpp"
 #include "wireless.h"
+#include "Sensors/BMP180.hpp"
+#include "Sensors/SI1145.hpp"
+#include "Sensors/HTU21DF.hpp"
+#include "Sensors/K30C02.hpp"
+#include "Sensors/SensorData.hpp"
 #include "char_dev.hpp"
+#include "utilities.h"
+#include "stdio.h"
 
 #include "FreeRTOS.h"
 #include "semphr.h"
 
-
+extern SensorData_s SensorData;
 
 /**
  * Terminal task is our UART0 terminal that handles our commands into the board.
@@ -129,12 +136,115 @@ class periodicSchedulerTask : public scheduler_task
 {
     public:
         periodicSchedulerTask(void);
-        bool init(void);
-        bool regTlm(void);
         bool run(void *p);
 
     private:
         bool handlePeriodicSemaphore(const uint8_t index, const uint8_t frequency);
+};
+
+/**
+ * Nordic wireless task to participate in the mesh network and handle retry logic
+ * such that packets are resent if an ACK has not been received
+ */
+class TemperaturePressureSensorTask : public scheduler_task
+{
+    public:
+        TemperaturePressureSensorTask(uint8_t priority) :
+            scheduler_task("Temperature_Pressure", 2048, priority)
+        {
+            bmp180Addr = 0xEF;
+            AC1 = 0; AC2 = 0; AC3 = 0; AC4 = 0; AC5 = 0; AC6 = 0;
+            B1 = 0 ; B2 = 0; MB = 0; MC = 0; MD = 0;
+            bmp180_get_cal_param(bmp180Addr, &AC1, &AC2, &AC3, &AC4, &AC5, &AC6, &B1, &B2, &MB, &MC, &MD);
+        }
+
+        bool run(void *p)
+        {
+            bmp180_service(bmp180Addr, AC1, AC2, AC3, AC4, AC5, AC6, B1, B2, MB, MC, MD);
+            return true;
+        }
+    private:
+        uint8_t     bmp180Addr;
+        int16_t     AC1, AC2, AC3, B1, B2, MB, MC, MD;
+        uint16_t    AC4, AC5, AC6;
+};
+
+class UVLightIRSensorTask : public scheduler_task
+{
+    public:
+        UVLightIRSensorTask(uint8_t priority) :
+            scheduler_task("UVLight_IR", 2048, priority)
+        {
+            reset();
+            SI1145_init();
+        }
+        bool run(void *p)
+        {
+            readUV();
+            readIR();
+            readVisible();
+            return true;
+        }
+
+};
+
+class HumiditySensorTask : public scheduler_task
+{
+    public:
+        HumiditySensorTask(uint8_t priority) :
+            scheduler_task("Humidity", 2048, priority)
+        {
+            HTU21DF_init();
+        }
+        bool run(void *p)
+        {
+            HTU21DF_Humidity();
+            return true;
+        }
+
+};
+
+class C02SensorTask : public scheduler_task
+{
+    public:
+        C02SensorTask(uint8_t priority) :
+            scheduler_task("C02", 2048, priority)
+        {
+
+        }
+        bool init()
+        {
+            K30_init();
+            return true;
+        }
+        bool run(void *p)
+        {
+            K30_ReadC02();
+            return true;
+        }
+
+};
+
+class PrintSensorTask : public scheduler_task
+{
+    public:
+        PrintSensorTask(uint8_t priority) :
+            scheduler_task("C02", 2048, priority)
+        {
+
+        }
+
+        bool run(void *p)
+        {
+            printf("C02 = %lf\n", SensorData.CO2);
+            printf("UV = %lf\n", SensorData.UVIndex);
+            printf("Humidity = %lf\n", SensorData.humidity);
+            printf("Temperature = %lf\n", SensorData.temperature);
+            printf("Pressure = %lf\n\n\n", SensorData.pressure);
+            delay_ms(10000);
+            return true;
+        }
+
 };
 
 #endif /* TASKS_HPP_ */

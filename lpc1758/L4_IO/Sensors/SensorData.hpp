@@ -14,7 +14,9 @@ typedef struct SensorDataStruct{
         float humidity;
         float UVIndex;
         float CO2;
-        float GPS;
+        float Latitude;
+        float Longitude;
+        float Altitude;
 } SensorData_s;
 
 

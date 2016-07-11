@@ -65,19 +65,23 @@ void readUV(){
 }
 void readIR()
 {
+#if 0
     uint8_t tmp8 = 0;
     uint16_t tmp16 = 0;
     delay_ms(20);
     tmp8 = I2C2::getInstance().readReg(SI1145_ADDR, SI1145_REG_ALSIRDATA0 );
     tmp16 = I2C2::getInstance().readReg(SI1145_ADDR, SI1145_REG_ALSIRDATA1);
+#endif
 }
 void readVisible()
 {
+#if 0
     uint8_t tmp8 = 0;
     uint16_t tmp16 = 0;
     delay_ms(20);
     tmp8 = I2C2::getInstance().readReg(SI1145_ADDR, SI1145_REG_ALSVISDATA0 );
     tmp16 = I2C2::getInstance().readReg(SI1145_ADDR, SI1145_REG_ALSVISDATA1);
+#endif
 }
 
 void writeParam(uint8_t p, uint8_t v)

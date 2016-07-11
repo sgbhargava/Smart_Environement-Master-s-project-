@@ -30,6 +30,8 @@
 #include "math.h"
 #include "utilities.h"
 #include "uart2.hpp"
+#include "uart3.hpp"
+#include "string.h"
 
 /**
  * The main() creates tasks or "threads".  See the documentation of scheduler_task class at scheduler_task.hpp
@@ -48,6 +50,43 @@
 
 int main(void)
 {
+//    Uart3& u3 = Uart3::getInstance();
+//    u3.init(4800, 256, 32);
+//    char buffer[1024];
+//    float utcTime, latitude, longitude, HDOP, Altitude;
+//    int PositionFix, SatellitesUsed;
+//    char NSIndicator, EWIndicator;
+//    while(1)
+//    {
+//        u3.gets(buffer, 1024);
+//        int status = sscanf(buffer,"$GPGGA,%f,%f,%c,%f,%c,%d,%d,%f,%f",
+//                &utcTime, &latitude, &NSIndicator, &longitude, &EWIndicator,
+//                &PositionFix, &SatellitesUsed, &HDOP,&Altitude);
+//        if(status > 0)
+//        {
+//            if(!PositionFix)
+//            {
+//                utcTime = 0;
+//                latitude = 0;
+//                longitude = 0;
+//            }
+//            else
+//            {
+//                if(NSIndicator == 'S') latitude *= -1;
+//                if(EWIndicator == 'W') longitude *= -1;
+//                printf("buffer = %s\n", buffer);
+//                printf("latitude = %f\n", latitude);
+//                printf("longitude = %f\n", longitude);
+//                printf("UTC time = %f\n", utcTime);
+//                printf("HDOP = %f\n", HDOP);
+//                printf("Altitude = %f\n", Altitude);
+//                printf("Satellites = %d\n", SatellitesUsed);
+//            }
+//            if(status == 9) printf("Status is good\n");
+//            delay_ms(1000);
+//        }
+//    }
+
     /**
      * A few basic tasks for this bare-bone system :
      *      1.  Terminal task provides gateway to interact with the board through UART terminal.
@@ -70,6 +109,9 @@ int main(void)
     scheduler_add_task(new HumiditySensorTask(PRIORITY_MEDIUM));
 
     scheduler_add_task(new C02SensorTask(PRIORITY_MEDIUM));
+
+    scheduler_add_task(new GPSTask(PRIORITY_MEDIUM));
+
 #if 1
     scheduler_add_task(new PrintSensorTask(PRIORITY_MEDIUM));
 #endif

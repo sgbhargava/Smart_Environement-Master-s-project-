@@ -32,6 +32,7 @@
 #include "Sensors/HTU21DF.hpp"
 #include "Sensors/K30C02.hpp"
 #include "Sensors/SensorData.hpp"
+#include "Sensors/GPS.hpp"
 #include "char_dev.hpp"
 #include "utilities.h"
 #include "stdio.h"
@@ -225,6 +226,27 @@ class C02SensorTask : public scheduler_task
 
 };
 
+class GPSTask : public scheduler_task
+{
+    public:
+        GPSTask(uint8_t priority) :
+            scheduler_task("GPS", 4096, priority)
+        {
+
+        }
+        bool init()
+        {
+            GPS_init();
+            return true;
+        }
+        bool run(void *p)
+        {
+            GPS_Read();
+            return true;
+        }
+
+};
+
 class PrintSensorTask : public scheduler_task
 {
     public:
@@ -240,7 +262,10 @@ class PrintSensorTask : public scheduler_task
             printf("UV = %lf\n", SensorData.UVIndex);
             printf("Humidity = %lf\n", SensorData.humidity);
             printf("Temperature = %lf\n", SensorData.temperature);
-            printf("Pressure = %lf\n\n\n", SensorData.pressure);
+            printf("Pressure = %lf\n", SensorData.pressure);
+            printf("Latitude = %lf\n", SensorData.Latitude);
+            printf("Longitude = %lf\n", SensorData.Longitude);
+            printf("Altitude = %lf\n\n\n", SensorData.Altitude);
             delay_ms(10000);
             return true;
         }

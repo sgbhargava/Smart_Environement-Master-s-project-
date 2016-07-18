@@ -27,7 +27,27 @@
 #include "examples/examples.hpp"
 #include "i2c2.hpp"
 #include "stdlib.h"
-
+#include "uart2.hpp"
+#include "stdio.h"
+#include "string"
+#include "examples/common_includes.hpp"
+using namespace std;
+QueueHandle_t sysStatQh = 0;
+class myWifiTask : public scheduler_task
+{
+	public:
+		myWifiTask (uint8_t priority) : scheduler_task("myWifiTask", 512*8, priority) {
+		}
+		bool run(void *p)
+		{
+			printf("t\n");
+			Uart2& u2 = Uart2::getInstance();
+			u2.init(115200);
+			u2.putline("AT+RST\n\r");
+			vTaskDelay(1000);
+			return true;
+		}
+};
 
 /**
  * The main() creates tasks or "threads".  See the documentation of scheduler_task class at scheduler_task.hpp
@@ -45,6 +65,7 @@
  */
 int main(void)
 {
+	sysStatQh = xQueueCreate(1, sizeof(sysStat));
     /**
      * A few basic tasks for this bare-bone system :
      *      1.  Terminal task provides gateway to interact with the board through UART terminal.
@@ -59,12 +80,12 @@ int main(void)
 	//xTaskCreate(fuel_guage_task, (signed char*)"fuel_guage_task", STACK_BYTES(2048, 0, 1, 0));
 
     scheduler_add_task(new terminalTask(PRIORITY_HIGH));
-
+   // scheduler_add_task(new myWifiTask(PRIORITY_MEDIUM));
     /* Consumes very little CPU, but need highest priority to handle mesh network ACKs */
     scheduler_add_task(new wirelessTask(PRIORITY_CRITICAL));
 
     /* Change "#if 0" to "#if 1" to run period tasks; @see period_callbacks.cpp */
-    #if 1
+    #if 0
     scheduler_add_task(new periodicSchedulerTask());
     #endif
 
@@ -124,9 +145,15 @@ int main(void)
      * @endcode
      */
     #if 0
-        Uart3 &u3 = Uart3::getInstance();
-        u3.init(WIFI_BAUD_RATE, WIFI_RXQ_SIZE, WIFI_TXQ_SIZE);
-        scheduler_add_task(new wifiTask(Uart3::getInstance(), PRIORITY_LOW));
+        Uart2 &u2 = Uart2::getInstance();
+        u2.init(WIFI_BAUD_RATE, WIFI_RXQ_SIZE, WIFI_TXQ_SIZE);
+        scheduler_add_task(new wifiTask(Uart2::getInstance(), PRIORITY_LOW));
+    #endif
+
+	#if 1
+        Uart2 &u2 = Uart2::getInstance();
+        u2.init(ESP8266_BAUD_RATE, ESP8266_RXQ_SIZE, ESP8266_TXQ_SIZE);
+        scheduler_add_task(new esp8266Task(Uart2::getInstance(), PRIORITY_LOW));
     #endif
 
     scheduler_start(); ///< This shouldn't return

@@ -131,7 +131,7 @@
 
 void reset();
 void SI1145_init();
-void readUV();
+void readUV(float * uv);
 void readIR();
 void readVisible();
 void writeParam(uint8_t p, uint8_t v);

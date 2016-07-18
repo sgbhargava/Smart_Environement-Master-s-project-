@@ -17,6 +17,8 @@
 
 void HTU21DF_init();
 
-void HTU21DF_Humidity();
+void HTU21DF_Humidity(float * humidity);
+
+void HTU21DF_Temperature(float * temperature);
 
 #endif /* L4_IO_SENSORS_HTU21DF_HPP_ */

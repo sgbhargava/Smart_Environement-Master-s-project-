@@ -19,5 +19,20 @@ typedef struct SensorDataStruct{
         float Altitude;
 } SensorData_s;
 
+typedef struct GPSData_s{
+        float Latitude;
+        float Longitude;
+        float Altitude;
+} GPSData;
+
+typedef struct TemperatureData_s{
+        float temperature;
+        float pressure;
+}TemperatureData;
+
+typedef struct HumidityData_s{
+        float temperature;
+        float humidity;
+}HumidityData;
 
 #endif /* L4_IO_SENSORS_SENSORDATA_H_ */

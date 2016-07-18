@@ -12,9 +12,6 @@
 #include <stdio.h>
 #include <utilities.h>
 #include <i2c2.hpp>
-#include "SensorData.hpp"
-
-extern SensorData_s SensorData;
 
 void bmp180_get_cal_param(uint8_t deviceAddr, int16_t * AC1, int16_t * AC2, int16_t * AC3,
                             uint16_t * AC4, uint16_t * AC5, uint16_t * AC6,
@@ -22,7 +19,7 @@ void bmp180_get_cal_param(uint8_t deviceAddr, int16_t * AC1, int16_t * AC2, int1
                             int16_t * MC, int16_t * MD)
 {
     uint8_t msb, lsb;
-    delay_ms(1000);
+    delay_ms(20);
     //EEPROM
     msb = I2C2::getInstance().readReg(deviceAddr, 0xAA);
     lsb = I2C2::getInstance().readReg(deviceAddr, 0xAB);
@@ -90,19 +87,19 @@ void bmp180_get_up(uint8_t deviceAddr, int32_t * UP)
     *UP = (((msb << 16) | (lsb << 8) | xlsb) >> 8);
 }
 void bmp180_get_temperature(int32_t UT, uint16_t AC6, uint16_t AC5,
-                            int16_t MC, int16_t MD, int32_t * B5)
+                            int16_t MC, int16_t MD, int32_t * B5, float &temperature)
 {
-    int32_t X1, X2, temperature;
+    int32_t X1, X2, tmp;
     X1 = (UT-AC6) * AC5 / 32768;
     X2 = MC * 2048 / (X1 + MD);
     *B5 = X1 + X2;
-    temperature = ((X1 + X2) + 8) / 16;
-    SensorData.temperature = ((temperature/10.0)*(9.0/5.0)+32);
+    tmp = ((X1 + X2) + 8) / 16;
+    temperature = ((tmp/10.0)*(9.0/5.0)+32);
 }
 
 void bmp180_get_pressure(int16_t B1, int16_t B2, int32_t B5,
                         int16_t AC1, int16_t AC2, int16_t AC3,
-                        uint16_t AC4, int32_t UP )
+                        uint16_t AC4, int32_t UP, float &pressure )
 {
     int32_t X1, X2, X3, B3, B6, p;
     uint32_t B4, B7;
@@ -126,19 +123,19 @@ void bmp180_get_pressure(int16_t B1, int16_t B2, int32_t B5,
     X1 = (X1 * 3038)/ 65536;
     X2 = (-7357 * p)/65536;
     p = p + (X1 + X2 + 3791) / 16;
-    SensorData.pressure = p;
+    pressure = p;
 }
 
 void bmp180_service(uint8_t deviceAddr, int16_t AC1, int16_t AC2, int16_t AC3,
                             uint16_t AC4, uint16_t AC5, uint16_t AC6,
                             int16_t B1, int16_t B2, int16_t MB,
-                            int16_t MC, int16_t MD)
+                            int16_t MC, int16_t MD, TemperatureData_s * tempData)
 {
     int32_t     ut, up, b5;
     bmp180_get_ut(deviceAddr, &ut);
     bmp180_get_up( deviceAddr, &up);
-    bmp180_get_temperature( ut,  AC6,  AC5, MC,  MD,  &b5);
-    bmp180_get_pressure( B1,  B2,  b5, AC1,  AC2,  AC3, AC4, up);
+    bmp180_get_temperature( ut,  AC6,  AC5, MC,  MD,  &b5, tempData->temperature);
+    bmp180_get_pressure( B1,  B2,  b5, AC1,  AC2,  AC3, AC4, up, tempData->pressure);
 }
 
 #endif /* BMP180_C_ */

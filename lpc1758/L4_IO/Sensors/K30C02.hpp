@@ -18,7 +18,7 @@
 #define CHECKSUM_LSB        0x25
 
 void K30_init();
-void K30_ReadC02();
+void K30_ReadC02(float * co2Data);
 
 
 #endif /* L4_IO_SENSORS_K30C02_HPP_ */

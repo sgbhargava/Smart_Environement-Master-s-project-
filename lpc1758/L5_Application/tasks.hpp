@@ -153,21 +153,30 @@ class TemperaturePressureSensorTask : public scheduler_task
         TemperaturePressureSensorTask(uint8_t priority) :
             scheduler_task("Temperature_Pressure", 2048, priority)
         {
-            bmp180Addr = 0xEF;
+            sensor_Temperature_data_q = xQueueCreate(1, sizeof(TempertureData_q));
+            addSharedObject("Temperature_queue", sensor_Temperature_data_q);
+            bmp180Addr = 0xEE;
             AC1 = 0; AC2 = 0; AC3 = 0; AC4 = 0; AC5 = 0; AC6 = 0;
             B1 = 0 ; B2 = 0; MB = 0; MC = 0; MD = 0;
+        }
+        bool init()
+        {
             bmp180_get_cal_param(bmp180Addr, &AC1, &AC2, &AC3, &AC4, &AC5, &AC6, &B1, &B2, &MB, &MC, &MD);
+            return true;
         }
 
         bool run(void *p)
         {
-            bmp180_service(bmp180Addr, AC1, AC2, AC3, AC4, AC5, AC6, B1, B2, MB, MC, MD);
+            bmp180_service(bmp180Addr, AC1, AC2, AC3, AC4, AC5, AC6, B1, B2, MB, MC, MD, &TempertureData_q);
+            xQueueSend(sensor_Temperature_data_q, &TempertureData_q, 0);
             return true;
         }
     private:
         uint8_t     bmp180Addr;
         int16_t     AC1, AC2, AC3, B1, B2, MB, MC, MD;
         uint16_t    AC4, AC5, AC6;
+        QueueHandle_t sensor_Temperature_data_q;
+        TemperatureData_s TempertureData_q;
 };
 
 class UVLightIRSensorTask : public scheduler_task
@@ -176,16 +185,26 @@ class UVLightIRSensorTask : public scheduler_task
         UVLightIRSensorTask(uint8_t priority) :
             scheduler_task("UVLight_IR", 2048, priority)
         {
+            sensor_UVLight_data_q = xQueueCreate(1, sizeof(float));
+            addSharedObject("UVLight_queue", sensor_UVLight_data_q);
+            uv = -1;
+        }
+        bool init()
+        {
             reset();
             SI1145_init();
+            return true;
         }
         bool run(void *p)
         {
-            readUV();
-            readIR();
-            readVisible();
+            readUV(&uv);
+            xQueueSend(sensor_UVLight_data_q, &uv, 0);
             return true;
         }
+    private:
+        QueueHandle_t sensor_UVLight_data_q;
+        SensorData_s SensorData_q;
+        float uv;
 
 };
 
@@ -195,13 +214,31 @@ class HumiditySensorTask : public scheduler_task
         HumiditySensorTask(uint8_t priority) :
             scheduler_task("Humidity", 2048, priority)
         {
+            sensor_Humidity_data_q = xQueueCreate(1, sizeof(humidty_temperature));
+            addSharedObject("Humidity_queue", sensor_Humidity_data_q);
+            humidity = -1;
+            temperature = -1;
+        }
+        bool init()
+        {
             HTU21DF_init();
+            return true;
         }
         bool run(void *p)
         {
-            HTU21DF_Humidity();
+            delay_ms(5000);
+            HTU21DF_Humidity(&humidity);
+            HTU21DF_Temperature(&temperature);
+            humidty_temperature.humidity = humidity;
+            humidty_temperature.temperature = ((temperature)*(9.0/5.0)+32);
+            xQueueSend(sensor_Humidity_data_q, &humidty_temperature, 0);
             return true;
         }
+    private:
+        QueueHandle_t sensor_Humidity_data_q;
+        HumidityData_s humidty_temperature;
+        float humidity;
+        float temperature;
 
 };
 
@@ -211,7 +248,9 @@ class C02SensorTask : public scheduler_task
         C02SensorTask(uint8_t priority) :
             scheduler_task("C02", 2048, priority)
         {
-
+            sensor_c02_data_q = xQueueCreate(1, sizeof(float));
+            addSharedObject("CO2_queue", sensor_c02_data_q);
+            co2_data = -1;
         }
         bool init()
         {
@@ -220,10 +259,13 @@ class C02SensorTask : public scheduler_task
         }
         bool run(void *p)
         {
-            K30_ReadC02();
+            K30_ReadC02(&co2_data);
+            xQueueSend(sensor_c02_data_q, &co2_data, 0);
             return true;
         }
-
+    private:
+        QueueHandle_t sensor_c02_data_q;
+        float co2_data;
 };
 
 class GPSTask : public scheduler_task
@@ -232,7 +274,8 @@ class GPSTask : public scheduler_task
         GPSTask(uint8_t priority) :
             scheduler_task("GPS", 4096, priority)
         {
-
+            sensor_gps_data_q = xQueueCreate(1, sizeof(GPSData_s));
+            addSharedObject("gps_queue", sensor_gps_data_q);
         }
         bool init()
         {
@@ -241,35 +284,69 @@ class GPSTask : public scheduler_task
         }
         bool run(void *p)
         {
-            GPS_Read();
+            GPS_Read(&gps_q);
+            xQueueSend(sensor_gps_data_q, &gps_q, 0);
             return true;
         }
-
+    private:
+        QueueHandle_t sensor_gps_data_q;
+        GPSData_s gps_q;
 };
 
 class PrintSensorTask : public scheduler_task
 {
     public:
         PrintSensorTask(uint8_t priority) :
-            scheduler_task("C02", 2048, priority)
+            scheduler_task("Print", 2048, priority)
         {
-
+            sensor_gps_data_q = getSharedObject("gps_queue");
+            sensor_c02_data_q = getSharedObject("CO2_queue");
+            sensor_Humidity_data_q = getSharedObject("Humidity_queue");
+            sensor_UVLight_data_q = getSharedObject("UVLight_queue");
+            sensor_Temperature_data_q = getSharedObject("Temperature_queue");
+            co2Data = 0;
+            humidity = 0;
+            uv = 0;
         }
 
         bool run(void *p)
         {
-            printf("C02 = %lf\n", SensorData.CO2);
-            printf("UV = %lf\n", SensorData.UVIndex);
-            printf("Humidity = %lf\n", SensorData.humidity);
-            printf("Temperature = %lf\n", SensorData.temperature);
-            printf("Pressure = %lf\n", SensorData.pressure);
-            printf("Latitude = %lf\n", SensorData.Latitude);
-            printf("Longitude = %lf\n", SensorData.Longitude);
-            printf("Altitude = %lf\n\n\n", SensorData.Altitude);
-            delay_ms(10000);
+            delay_ms(5000);
+            if(xQueueReceive(sensor_Temperature_data_q, &TempertureData_q, 0))
+            {
+                printf("Temperature(BMP) = %lf\n", TempertureData_q.temperature );
+                printf("Pressure(BMP) = %lf\n", TempertureData_q.pressure);
+            }
+            if(xQueueReceive(sensor_gps_data_q, &gps_q, 0))
+            {
+                printf("Latitude = %lf\n", gps_q.Latitude);
+                printf("Longitude = %lf\n", gps_q.Longitude);
+                printf("Altitude = %lf\n\n\n", gps_q.Altitude);
+            }
+            if(xQueueReceive(sensor_c02_data_q, &co2Data, 0))
+            {
+                printf("CO2 = %lf\n", co2Data);
+            }
+            if(xQueueReceive(sensor_Humidity_data_q, &Humidity_q, 0))
+            {
+                printf("Humidity = %lf\n", Humidity_q.humidity);
+                printf("Temperature = %lf\n", Humidity_q.temperature);
+            }
+            if(xQueueReceive(sensor_UVLight_data_q, &uv, 0))
+            {
+                printf("UV Light = %lf\n", uv);
+            }
+
             return true;
         }
-
+    private:
+        QueueHandle_t sensor_gps_data_q, sensor_c02_data_q, sensor_Humidity_data_q,
+        sensor_UVLight_data_q, sensor_Temperature_data_q;
+        GPSData_s gps_q;
+        TemperatureData_s TempertureData_q;
+        HumidityData_s Humidity_q;
+        float co2Data, humidity, uv;
+        SensorData_s SensorData_q;
 };
 
 #endif /* TASKS_HPP_ */

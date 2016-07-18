@@ -11,9 +11,6 @@
 #include <stdio.h>
 #include <utilities.h>
 #include <i2c2.hpp>
-#include "SensorData.hpp"
-
-extern SensorData_s SensorData;
 
 void reset()
 {
@@ -55,13 +52,13 @@ void SI1145_init()
     //Auto Run
     I2C2::getInstance().writeReg(SI1145_ADDR, SI1145_REG_COMMAND, SI1145_PSALS_AUTO);
 }
-void readUV(){
+void readUV(float * uv){
     uint8_t tmp8 = 0;
     uint16_t tmp16 = 0;
     delay_ms(20);
     tmp8 = I2C2::getInstance().readReg(SI1145_ADDR, SI1145_REG_UVINDEX0 );
     tmp16 = I2C2::getInstance().readReg(SI1145_ADDR, SI1145_REG_UVINDEX1);
-    SensorData.UVIndex = (((tmp16 << 8) + tmp8)/100.0);
+    *uv = (((tmp16 << 8) + tmp8)/100.0);
 }
 void readIR()
 {

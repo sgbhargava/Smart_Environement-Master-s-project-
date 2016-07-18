@@ -8,19 +8,19 @@
 #ifndef L4_IO_SENSORS_GPS_CPP_
 #define L4_IO_SENSORS_GPS_CPP_
 #include "GPS.hpp"
-#include "SensorData.hpp"
 #include "uart3.hpp"
 #include "stdio.h"
+#include "scheduler_task.hpp"
 
-extern SensorData_s SensorData;
 Uart3& Gps_uart3 = Uart3::getInstance();
+
 
 void GPS_init()
 {
     Gps_uart3.init(4800, 256, 32);
 }
 
-void GPS_Read()
+void GPS_Read(GPSData_s * gps)
 {
     char buffer[1024];
     float utcTime, latitude, longitude, HDOP, Altitude;
@@ -43,9 +43,9 @@ void GPS_Read()
         {
             if(NSIndicator == 'S') latitude *= -1;
             if(EWIndicator == 'W') longitude *= -1;
-            SensorData.Latitude = latitude;
-            SensorData.Longitude = longitude;
-            SensorData.Altitude = Altitude;
+            gps->Latitude = latitude;
+            gps->Longitude = longitude;
+            gps->Altitude = Altitude;
         }
     }
 

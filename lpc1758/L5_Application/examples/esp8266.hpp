@@ -17,6 +17,7 @@
 #include "scheduler_task.hpp"
 #include "uart_dev.hpp"
 #include "string"
+#include "examples/common_includes.hpp"
 /**
  * Web Request Type.
  * See example below on how to use it.

@@ -24,6 +24,7 @@
  *
  */
 #include "tasks.hpp"
+#include "task.h"
 #include "examples/examples.hpp"
 #include "i2c2.hpp"
 #include "stdlib.h"
@@ -31,8 +32,12 @@
 #include "stdio.h"
 #include "string"
 #include "examples/common_includes.hpp"
+
+extern void fuel_guage_task(void *p);
+extern void lipo_monitor_init();
 using namespace std;
 QueueHandle_t sysStatQh = 0;
+const char DEVICE_ID = '1';
 class myWifiTask : public scheduler_task
 {
 	public:
@@ -63,9 +68,12 @@ class myWifiTask : public scheduler_task
  *        In either case, you should avoid using this bus or interfacing to external components because
  *        there is no semaphore configured for this bus and it should be used exclusively by nordic wireless.
  */
+sysStatStruct sys_stat;
 int main(void)
 {
+	lipo_monitor_init();
 	sysStatQh = xQueueCreate(1, sizeof(sysStat));
+
     /**
      * A few basic tasks for this bare-bone system :
      *      1.  Terminal task provides gateway to interact with the board through UART terminal.
@@ -77,12 +85,12 @@ int main(void)
      * control codes can be learned by typing the "learn" terminal command.
      */
 	//set p0.0 as input
-	//xTaskCreate(fuel_guage_task, (signed char*)"fuel_guage_task", STACK_BYTES(2048, 0, 1, 0));
+	xTaskCreate(fuel_guage_task, "fuel_guage_task", STACK_BYTES(2048), 0, 1, 0);
 
     scheduler_add_task(new terminalTask(PRIORITY_HIGH));
    // scheduler_add_task(new myWifiTask(PRIORITY_MEDIUM));
     /* Consumes very little CPU, but need highest priority to handle mesh network ACKs */
-    scheduler_add_task(new wirelessTask(PRIORITY_CRITICAL));
+    //scheduler_add_task(new wirelessTask(PRIORITY_CRITICAL));
 
     /* Change "#if 0" to "#if 1" to run period tasks; @see period_callbacks.cpp */
     #if 0
@@ -153,7 +161,7 @@ int main(void)
 	#if 1
         Uart2 &u2 = Uart2::getInstance();
         u2.init(ESP8266_BAUD_RATE, ESP8266_RXQ_SIZE, ESP8266_TXQ_SIZE);
-        scheduler_add_task(new esp8266Task(Uart2::getInstance(), PRIORITY_LOW));
+        scheduler_add_task(new esp8266Task(Uart2::getInstance(), PRIORITY_MEDIUM));
     #endif
 
     scheduler_start(); ///< This shouldn't return

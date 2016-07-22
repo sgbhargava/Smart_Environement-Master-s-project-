@@ -4,7 +4,7 @@
  *  Created on: Jul 15, 2016
  *      Author: Bhargav
  */
-#include <examples/common_includes.hpp>
+#include "examples/common_includes.hpp"
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
@@ -16,6 +16,7 @@
 #include "tlm/c_tlm_var.h"
 #include "utilities.h"
 #include "str.hpp"
+#include <iostream>
 extern QueueHandle_t sysStatQh;
 void esp8266Task::ESP8266Flush(void)
 {
@@ -56,11 +57,16 @@ bool esp8266Task::ESP8266HandleHttpReq(web_req_type request)
 {
 	STR_ON_STACK(rsp, 128);
     bool success = false;
+    if (!ESP8266IsConnected())
+    {
+    	ESP8266Connect();
+    }
     printf("\n\n%s\n", request.payload.c_str());
     printf("size is %d", request.payload.length());
-    ESP8266SendCmd("AT+CIPSTART=\"TCP\",\"192.168.1.228\",80");
+    ESP8266SendCmd("AT+CIPSTART=\"TCP\",\"smartenvironmentsjsu.azurewebsites.net\",80");
     std::string to_be_sent;
     to_be_sent = request.req + request.payload;
+    delay_ms(1000);
     std::string send_len = "AT+CIPSEND=";
     int len_send = to_be_sent.length();
     char len_send_c[3];
@@ -69,6 +75,7 @@ bool esp8266Task::ESP8266HandleHttpReq(web_req_type request)
     send_len += "\r\n";
     printf("\n\n\n\%s\n%d", to_be_sent.c_str(),to_be_sent.length());
 	ESP8266SendCmd(send_len.c_str());
+	delay_ms(500);
 	ESP8266SendCmd(to_be_sent.c_str());
 	mESP8266.gets((char*)rsp(), rsp.getCapacity(), 1000);
 	printf("%s\n",rsp());
@@ -92,7 +99,8 @@ bool esp8266Task::ESP8266Connect(void)
 		printf("Unable to configure device as AP and station\n");
 	}
 	ESP8266Flush();
-	mESP8266.putline("AT+CWJAP=\"Through Silence\",\"jjjjmmyy16\"");
+	//mESP8266.putline("AT+CWJAP=\"Through Silence\",\"jjjjmmyy16\"");
+	mESP8266.putline("AT+CWJAP=\"tigers dumplings\",\"welovetiger\"");
 	mESP8266.gets((char*)rsp(), rsp.getCapacity(), 1000);
 	while(!(rsp.beginsWithIgnoreCase("ok")))
 	{
@@ -137,7 +145,7 @@ bool esp8266Task::ESP8266IsConnected(void)
     mESP8266.gets((char*)rsp(), rsp.getCapacity(), 1000);
     printf("\t%s\n",rsp());
     mESP8266.gets((char*)rsp(), rsp.getCapacity(), 1000);
-    if(!rsp.beginsWithIgnoreCase("+CWJAP:\"Through Silence\"")) {
+    if(!rsp.beginsWithIgnoreCase("+CWJAP:\"tigers dumplings\"")) {
     	return false;
     }
 
@@ -308,6 +316,7 @@ bool esp8266Task::taskEntry()
 
 bool esp8266Task::run(void* p)
 {
+	web_req_type request;
    /* web_req_type *request = 0;
     if (xQueueReceive(mHttpReqQueue, &(request), portMAX_DELAY)) {
         mESP8266.setReady(false);
@@ -319,36 +328,41 @@ bool esp8266Task::run(void* p)
         }
         mESP8266.setReady(true);
     }*/
-	printf("running webreq\n");
-	sysStat sys_stat;
-	sys_stat.deviceID = "2";
+	sysStatStruct status;
+
+	if (xQueueReceive(sysStatQh, &status, portMAX_DELAY)) {
+			 mESP8266.setReady(false);
+			 {
+/*	sys_stat.deviceID = "2";
 	sys_stat.deviceTemp = "70";
 	sys_stat.deviceBat = "10";
 	sys_stat.deviceCPU = "20";
-	sys_stat.deviceMem = "30";
+	sys_stat.deviceMem = "30";*/
+	char deviceTempStr[6];
+	char deviceBatStr[6];
+	char deviceCPUStr[6];
+	char deviceMemStr[6];
+	char deviceVoltage[6];
+	snprintf(deviceTempStr, 6,"%f",status.deviceTemperature);
+	snprintf(deviceBatStr, 6, "%f", status.deviceBat);
+	snprintf(deviceCPUStr,6 ,"%f", status.deviceCPU);
+	snprintf(deviceMemStr, 6, "%f", status.deviceMem);
+	snprintf(deviceVoltage, 6, "%f", status.deviceVoltage);
 
-	//printf("%s\n %s\n", sys_stat.deviceBat.c_str(), sys_stat.deviceCPU.c_str());
-	 xQueueSend(sysStatQh, &sys_stat, portMAX_DELAY);
-	 sysStat status;
-	 web_req_type request;
-
-	 // Wait 30 sec (or more) or if you don't want to poll, use a semaphore as signal
-	 // webreq.req_done_signal semaphore is given after web request terminates
-	 if (xQueueReceive(sysStatQh, &status, portMAX_DELAY)) {
-	         mESP8266.setReady(false);
-		 {
 	       int len;
-	       std:: string req("POST /deviceInfo HTTP/1.1\r\nHost: 192.168.1.228\r\ncontent-type: application/json\r\ncontent-length: ");
+	       std:: string req("POST /deviceinfo HTTP/1.1\r\nHost: smartenvironmentsjsu.azurewebsites.net\r\ncontent-type: application/json\r\ncontent-length: ");
 	       std:: string data;
-	       data = "{\r\n  \"deviceID\": " + status.deviceID;
+	       data = "{\r\n  \"deviceID\": 1";
 	       data += ",\r\n  \"deviceTemp\": ";
-	       data += status.deviceTemp;
+	       data += deviceTempStr;
 	       data += ",\r\n  \"deviceBatteryPercent\": ";
-	       data +=  status.deviceBat;
+	       data +=  deviceBatStr;
+	       data += ",\r\n  \"deviceVoltage\": ";
+	       data += deviceVoltage;
 	       data += ",\r\n  \"deviceCPUUsage\": ";
-	       data += status.deviceCPU;
+	       data += deviceCPUStr;
 	       data += ",\r\n  \"deviceMemUsage\": ";
-	       data += status.deviceMem;
+	       data += deviceMemStr;
 	       data += "\r\n}";
 
 	       len = data.length();
@@ -357,10 +371,16 @@ bool esp8266Task::run(void* p)
 	       req = req + a + "\r\n\r\n";
 	       request.payload = data;
 	       request.req = req;
-	       ESP8266HandleHttpReq(request);
-	       vTaskDelay(5000);
+	       printf("%s", req.c_str());
+	       printf("%s\n", data.c_str());
+			 }
+		esp8266Task::ESP8266HandleHttpReq(request);
+		vTaskDelay(600000);
+	}
 
-		 }
-	 }
+
+
+
+
     return true;
 }

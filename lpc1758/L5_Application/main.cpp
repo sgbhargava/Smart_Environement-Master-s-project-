@@ -32,27 +32,18 @@
 #include "stdio.h"
 #include "string"
 #include "examples/common_includes.hpp"
+#include "stdio.h"
+#include "math.h"
+#include "utilities.h"
+#include "uart2.hpp"
+#include "uart3.hpp"
+#include "string.h"
 
 extern void fuel_guage_task(void *p);
 extern void lipo_monitor_init();
 using namespace std;
 QueueHandle_t sysStatQh = 0;
 const char DEVICE_ID = '1';
-class myWifiTask : public scheduler_task
-{
-	public:
-		myWifiTask (uint8_t priority) : scheduler_task("myWifiTask", 512*8, priority) {
-		}
-		bool run(void *p)
-		{
-			printf("t\n");
-			Uart2& u2 = Uart2::getInstance();
-			u2.init(115200);
-			u2.putline("AT+RST\n\r");
-			vTaskDelay(1000);
-			return true;
-		}
-};
 
 /**
  * The main() creates tasks or "threads".  See the documentation of scheduler_task class at scheduler_task.hpp
@@ -91,6 +82,20 @@ int main(void)
    // scheduler_add_task(new myWifiTask(PRIORITY_MEDIUM));
     /* Consumes very little CPU, but need highest priority to handle mesh network ACKs */
     //scheduler_add_task(new wirelessTask(PRIORITY_CRITICAL));
+
+    scheduler_add_task(new TemperaturePressureSensorTask(PRIORITY_MEDIUM));
+
+    scheduler_add_task(new UVLightIRSensorTask(PRIORITY_MEDIUM));
+
+    scheduler_add_task(new HumiditySensorTask(PRIORITY_MEDIUM));
+
+    scheduler_add_task(new C02SensorTask(PRIORITY_MEDIUM));
+
+    scheduler_add_task(new GPSTask(PRIORITY_MEDIUM));
+
+#if 1
+    scheduler_add_task(new PrintSensorTask(PRIORITY_MEDIUM));
+#endif
 
     /* Change "#if 0" to "#if 1" to run period tasks; @see period_callbacks.cpp */
     #if 0

@@ -40,6 +40,7 @@ const uint32_t PERIOD_TASKS_STACK_SIZE_BYTES = (512 * 4);
 bool period_init(void)
 {
 
+	return true;
 }
 
 /// Register any telemetry variables
@@ -48,7 +49,6 @@ bool period_reg_tlm(void)
     // Make sure "SYS_CFG_ENABLE_TLM" is enabled at sys_config.h to use Telemetry
     return true; // Must return true upon success
 }
-
 
 
 void period_1Hz(void)

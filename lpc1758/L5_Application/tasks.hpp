@@ -321,7 +321,7 @@ class GetSystemHealth : public scheduler_task
             sys_get_mem_info_str(buffer);
             sscanf(buffer, "Memory Information: \nGlobal Used   :  %d\nmalloc Used   :  %d", &global_mem, &malloc_mem);
             total_mem = global_mem + malloc_mem;
-            systemData.memoryUsage = total_mem;
+            systemData.deviceMemUsage = total_mem;
 
             //Get Total CPU usage
             const unsigned portBASE_TYPE ArraySize = uxTaskGetSystemState(&status[0], maxTasks, &totalRunTime);
@@ -331,9 +331,11 @@ class GetSystemHealth : public scheduler_task
                     if(strcmp(e->pcTaskName, "IDLE") == 0)
                     {
                         const uint32_t cpuPercent = (0 == totalRunTime) ? 0 : e->ulRunTimeCounter / (totalRunTime/100);
-                        systemData.CpuUsage = 100 - cpuPercent;
+                        systemData.deviceCPUUsage = 100 - cpuPercent;
                     }
              }
+            //Get LIPO data
+
             xQueueSend(systemHealth_data_q, &systemData, 0);
             return true;
         }
@@ -392,8 +394,8 @@ class PrintSensorTask : public scheduler_task
             }
             if(xQueueReceive(systemHealth_data_q, &systemData, 0))
             {
-                printf("Memory total usage = %d\n", systemData.memoryUsage);
-                printf("CPU total usage = %d\n", systemData.CpuUsage);
+                printf("Memory total usage = %d\n", systemData.deviceMemUsage);
+                printf("CPU total usage = %d\n", systemData.deviceCPUUsage);
             }
             return true;
         }

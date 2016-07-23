@@ -76,9 +76,9 @@ int main(void)
 
     scheduler_add_task(new GPSTask(PRIORITY_MEDIUM));
 
-#if 1
+    scheduler_add_task(new GetSystemHealth(PRIORITY_MEDIUM));
+
     scheduler_add_task(new PrintSensorTask(PRIORITY_MEDIUM));
-#endif
 
     /* Change "#if 0" to "#if 1" to run period tasks; @see period_callbacks.cpp */
     #if 0

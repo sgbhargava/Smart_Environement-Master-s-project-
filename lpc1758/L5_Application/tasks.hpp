@@ -33,14 +33,15 @@
 #include "Sensors/K30C02.hpp"
 #include "Sensors/SensorData.hpp"
 #include "Sensors/GPS.hpp"
+#include "task.h"               // uxTaskGetSystemState()
 #include "char_dev.hpp"
 #include "utilities.h"
 #include "stdio.h"
+#include "string.h"
 
 #include "FreeRTOS.h"
 #include "semphr.h"
 
-extern SensorData_s SensorData;
 
 /**
  * Terminal task is our UART0 terminal that handles our commands into the board.
@@ -293,6 +294,58 @@ class GPSTask : public scheduler_task
         GPSData_s gps_q;
 };
 
+class GetSystemHealth : public scheduler_task
+{
+    public:
+        GetSystemHealth(uint8_t priority) :
+            scheduler_task("SystemHealth", 2048, priority)
+        {
+            global_mem = 0;
+            malloc_mem = 0;
+            total_mem = 0;
+            systemHealth_data_q = xQueueCreate(1, sizeof(SystemHealth_s));
+            addSharedObject("Health_queue", systemHealth_data_q);
+        }
+
+        bool run(void *p)
+        {
+            const unsigned portBASE_TYPE maxTasks = 16;
+            TaskStatus_t status[maxTasks];
+            uint32_t totalRunTime = 0;
+            uint32_t tasksRunTime = 0;
+
+            //Delay Task to run at set rate
+            delay_ms(10000);
+
+            //Get Memory usage total
+            sys_get_mem_info_str(buffer);
+            sscanf(buffer, "Memory Information: \nGlobal Used   :  %d\nmalloc Used   :  %d", &global_mem, &malloc_mem);
+            total_mem = global_mem + malloc_mem;
+            systemData.memoryUsage = total_mem;
+
+            //Get Total CPU usage
+            const unsigned portBASE_TYPE ArraySize = uxTaskGetSystemState(&status[0], maxTasks, &totalRunTime);
+            for (unsigned i = 0; i < ArraySize; i++) {
+                TaskStatus_t *e = &status[i];
+                    tasksRunTime += e->ulRunTimeCounter;
+                    if(strcmp(e->pcTaskName, "IDLE") == 0)
+                    {
+                        const uint32_t cpuPercent = (0 == totalRunTime) ? 0 : e->ulRunTimeCounter / (totalRunTime/100);
+                        systemData.CpuUsage = 100 - cpuPercent;
+                    }
+             }
+            xQueueSend(systemHealth_data_q, &systemData, 0);
+            return true;
+        }
+    private:
+        char buffer[512];
+        int global_mem;
+        int malloc_mem;
+        int total_mem;
+        QueueHandle_t systemHealth_data_q;
+        SystemHealth_s systemData;
+};
+
 class PrintSensorTask : public scheduler_task
 {
     public:
@@ -304,6 +357,7 @@ class PrintSensorTask : public scheduler_task
             sensor_Humidity_data_q = getSharedObject("Humidity_queue");
             sensor_UVLight_data_q = getSharedObject("UVLight_queue");
             sensor_Temperature_data_q = getSharedObject("Temperature_queue");
+            systemHealth_data_q = getSharedObject("Health_queue");
             co2Data = 0;
             humidity = 0;
             uv = 0;
@@ -336,17 +390,22 @@ class PrintSensorTask : public scheduler_task
             {
                 printf("UV Light = %lf\n", uv);
             }
-
+            if(xQueueReceive(systemHealth_data_q, &systemData, 0))
+            {
+                printf("Memory total usage = %d\n", systemData.memoryUsage);
+                printf("CPU total usage = %d\n", systemData.CpuUsage);
+            }
             return true;
         }
     private:
         QueueHandle_t sensor_gps_data_q, sensor_c02_data_q, sensor_Humidity_data_q,
-        sensor_UVLight_data_q, sensor_Temperature_data_q;
+        sensor_UVLight_data_q, sensor_Temperature_data_q, systemHealth_data_q;
         GPSData_s gps_q;
         TemperatureData_s TempertureData_q;
         HumidityData_s Humidity_q;
         float co2Data, humidity, uv;
         SensorData_s SensorData_q;
+        SystemHealth_s systemData;
 };
 
 #endif /* TASKS_HPP_ */

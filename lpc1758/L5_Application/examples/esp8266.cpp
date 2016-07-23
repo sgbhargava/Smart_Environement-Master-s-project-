@@ -99,8 +99,8 @@ bool esp8266Task::ESP8266Connect(void)
 		printf("Unable to configure device as AP and station\n");
 	}
 	ESP8266Flush();
-	//mESP8266.putline("AT+CWJAP=\"Through Silence\",\"jjjjmmyy16\"");
-	mESP8266.putline("AT+CWJAP=\"tigers dumplings\",\"welovetiger\"");
+	mESP8266.putline("AT+CWJAP=\"Through Silence\",\"jjjjmmyy16\"");
+	//mESP8266.putline("AT+CWJAP=\"tigers dumplings\",\"welovetiger\"");
 	mESP8266.gets((char*)rsp(), rsp.getCapacity(), 1000);
 	while(!(rsp.beginsWithIgnoreCase("ok")))
 	{
@@ -113,22 +113,7 @@ bool esp8266Task::ESP8266Connect(void)
 	}
 
 	ESP8266IsConnected();
-	/*while(mESP8266.gets((char*)rsp(), rsp.getCapacity(), 1000));
-	printf("\t%s\n",rsp());
-	while(mESP8266.gets((char*)rsp(), rsp.getCapacity(), 1000));
-	printf("\t%s\n",rsp());
-	if(!rsp.beginsWithIgnoreCase("wifi connected"))
-	{
-		printf("Wifi connection failed\n");
-		return false;
-	}
-	while(mESP8266.gets((char*)rsp(), rsp.getCapacity(), 1000));
-	printf("\t%s\n",rsp());
-	if(!rsp.beginsWithIgnoreCase("wifi got IP"))
-	{
-		printf("Wifi did not get IP\n");
-		return false;
-	}*/
+
     return true;
 }
 
@@ -145,7 +130,7 @@ bool esp8266Task::ESP8266IsConnected(void)
     mESP8266.gets((char*)rsp(), rsp.getCapacity(), 1000);
     printf("\t%s\n",rsp());
     mESP8266.gets((char*)rsp(), rsp.getCapacity(), 1000);
-    if(!rsp.beginsWithIgnoreCase("+CWJAP:\"tigers dumplings\"")) {
+    if(!rsp.beginsWithIgnoreCase("+CWJAP:\"Through Silence\"")) {
     	return false;
     }
 
@@ -316,71 +301,207 @@ bool esp8266Task::taskEntry()
 
 bool esp8266Task::run(void* p)
 {
-	web_req_type request;
-   /* web_req_type *request = 0;
-    if (xQueueReceive(mHttpReqQueue, &(request), portMAX_DELAY)) {
-        mESP8266.setReady(false);
-        {
-            request->success = ESP8266HandleHttpReq(request);
-            if(request->req_done_signal) {
-                xSemaphoreGive( (request->req_done_signal));
-            }
-        }
-        mESP8266.setReady(true);
-    }*/
-	sysStatStruct status;
+	if (xSemaphoreTake(TXSem, portMAX_DELAY))
+	{
+		printf ("=================Got TXSem\n");
 
-	if (xQueueReceive(sysStatQh, &status, portMAX_DELAY)) {
-			 mESP8266.setReady(false);
-			 {
-/*	sys_stat.deviceID = "2";
-	sys_stat.deviceTemp = "70";
-	sys_stat.deviceBat = "10";
-	sys_stat.deviceCPU = "20";
-	sys_stat.deviceMem = "30";*/
-	char deviceTempStr[6];
-	char deviceBatStr[6];
-	char deviceCPUStr[6];
-	char deviceMemStr[6];
-	char deviceVoltage[6];
-	snprintf(deviceTempStr, 6,"%f",status.deviceTemperature);
-	snprintf(deviceBatStr, 6, "%f", status.deviceBat);
-	snprintf(deviceCPUStr,6 ,"%f", status.deviceCPU);
-	snprintf(deviceMemStr, 6, "%f", status.deviceMem);
-	snprintf(deviceVoltage, 6, "%f", status.deviceVoltage);
+		web_req_type request;
+		sysStatStruct status;
 
-	       int len;
-	       std:: string req("POST /deviceinfo HTTP/1.1\r\nHost: smartenvironmentsjsu.azurewebsites.net\r\ncontent-type: application/json\r\ncontent-length: ");
-	       std:: string data;
-	       data = "{\r\n  \"deviceID\": 1";
-	       data += ",\r\n  \"deviceTemp\": ";
-	       data += deviceTempStr;
-	       data += ",\r\n  \"deviceBatteryPercent\": ";
-	       data +=  deviceBatStr;
-	       data += ",\r\n  \"deviceVoltage\": ";
-	       data += deviceVoltage;
-	       data += ",\r\n  \"deviceCPUUsage\": ";
-	       data += deviceCPUStr;
-	       data += ",\r\n  \"deviceMemUsage\": ";
-	       data += deviceMemStr;
-	       data += "\r\n}";
 
-	       len = data.length();
-	       char a[3];
-	       sprintf(a, "%d", len);
-	       req = req + a + "\r\n\r\n";
-	       request.payload = data;
-	       request.req = req;
-	       printf("%s", req.c_str());
-	       printf("%s\n", data.c_str());
-			 }
-		esp8266Task::ESP8266HandleHttpReq(request);
+		if (xQueueReceive(sysStatQh, &status, portMAX_DELAY)) {
+			mESP8266.setReady(false);
+			{
+				char deviceTempStr[6];
+				char deviceBatStr[6];
+				char deviceCPUStr[6];
+				char deviceMemStr[6];
+				char deviceVoltage[6];
+				snprintf(deviceTempStr, 6,"%f",status.deviceTemperature);
+				snprintf(deviceBatStr, 6, "%f", status.deviceBat);
+				snprintf(deviceCPUStr,6 ,"%f", status.deviceCPU);
+				snprintf(deviceMemStr, 6, "%f", status.deviceMem);
+				snprintf(deviceVoltage, 6, "%f", status.deviceVoltage);
+
+			   int len;
+			   std:: string req("POST /deviceinfo HTTP/1.1\r\nHost: smartenvironmentsjsu.azurewebsites.net\r\ncontent-type: application/json\r\ncontent-length: ");
+			   std:: string data;
+			   data = "{\r\n  \"deviceID\": 1";
+			   data += ",\r\n  \"deviceTemp\": ";
+			   data += deviceTempStr;
+			   data += ",\r\n  \"deviceBatteryPercent\": ";
+			   data +=  deviceBatStr;
+			   data += ",\r\n  \"deviceVoltage\": ";
+			   data += deviceVoltage;
+			   data += ",\r\n  \"deviceCPUUsage\": ";
+			   data += deviceCPUStr;
+			   data += ",\r\n  \"deviceMemUsage\": ";
+			   data += deviceMemStr;
+			   data += "\r\n}";
+
+			   len = data.length();
+			   char a[3];
+			   sprintf(a, "%d", len);
+			   req = req + a + "\r\n\r\n";
+			   request.payload = data;
+			   request.req = req;
+			   printf("%s", req.c_str());
+			   printf("%s\n", data.c_str());
+				 }
+			esp8266Task::ESP8266HandleHttpReq(request);
+
+
+		}
+		mESP8266.setReady(true);
+		sensor_Humidity_data_q = getSharedObject("Humidity_queue");
+
+		if (xQueueReceive(sensor_Humidity_data_q, &Humidity_q, portMAX_DELAY)) {
+			mESP8266.setReady(false);
+			{
+				char sensorData[15];
+				snprintf(sensorData, 15, "%lf", Humidity_q.humidity);
+
+			   int len;
+			   std:: string req("POST /sensor/humidity HTTP/1.1\r\nHost: smartenvironmentsjsu.azurewebsites.net\r\ncontent-type: application/json\r\ncontent-length: ");
+			   std:: string data;
+			   data = "{\r\n  \"deviceID\": 1";
+			   data += ",\r\n  \"sensorData\": ";
+			   data += sensorData;
+			   data += "\r\n}";
+
+			   len = data.length();
+			   char a[3];
+			   sprintf(a, "%d", len);
+			   req = req + a + "\r\n\r\n";
+			   request.payload = data;
+			   request.req = req;
+			   printf("%s", req.c_str());
+			   printf("%s\n", data.c_str());
+			}
+			esp8266Task::ESP8266HandleHttpReq(request);
+
+			mESP8266.setReady(false);
+			{
+				char sensorData[15];
+				snprintf(sensorData, 15, "%lf", Humidity_q.temperature);
+
+			   int len;
+			   std:: string req("POST /sensor/temperature HTTP/1.1\r\nHost: smartenvironmentsjsu.azurewebsites.net\r\ncontent-type: application/json\r\ncontent-length: ");
+			   std:: string data;
+			   data = "{\r\n  \"deviceID\": 1";
+			   data += ",\r\n  \"sensorData\": ";
+			   data += sensorData;
+			   data += "\r\n}";
+
+			   len = data.length();
+			   char a[3];
+			   sprintf(a, "%d", len);
+			   req = req + a + "\r\n\r\n";
+			   request.payload = data;
+			   request.req = req;
+			   printf("%s", req.c_str());
+			   printf("%s\n", data.c_str());
+			}
+			esp8266Task::ESP8266HandleHttpReq(request);
+
+		}
+
+		sensor_UVLight_data_q = getSharedObject("UVLight_queue");
+		if (xQueueReceive(sensor_UVLight_data_q, &uv, portMAX_DELAY)) {
+			mESP8266.setReady(false);
+			{
+				char sensorData[15];
+				snprintf(sensorData, 15, "%lf", uv);
+
+			   int len;
+			   std:: string req("POST /sensor/ultraviolet HTTP/1.1\r\nHost: smartenvironmentsjsu.azurewebsites.net\r\ncontent-type: application/json\r\ncontent-length: ");
+			   std:: string data;
+			   data = "{\r\n  \"deviceID\": 1";
+			   data += ",\r\n  \"sensorData\": ";
+			   data += sensorData;
+			   data += "\r\n}";
+
+			   len = data.length();
+			   char a[3];
+			   sprintf(a, "%d", len);
+			   req = req + a + "\r\n\r\n";
+			   request.payload = data;
+			   request.req = req;
+			   printf("%s", req.c_str());
+			   printf("%s\n", data.c_str());
+			}
+			esp8266Task::ESP8266HandleHttpReq(request);
+
+		}
+
+		printf("Pressure to be sent\n");
+		sensor_Temperature_data_q = getSharedObject("Temperature_queue");
+		if (xQueueReceive(sensor_Temperature_data_q, &TempertureData_q, portMAX_DELAY)) {
+			mESP8266.setReady(false);
+			{
+				char sensorData[15];
+				snprintf(sensorData, 15, "%lf", TempertureData_q.pressure);
+
+			   int len;
+			   std:: string req("POST /sensor/pressure HTTP/1.1\r\nHost: smartenvironmentsjsu.azurewebsites.net\r\ncontent-type: application/json\r\ncontent-length: ");
+			   std:: string data;
+			   data = "{\r\n  \"deviceID\": 1";
+			   data += ",\r\n  \"sensorData\": ";
+			   data += sensorData;
+			   data += "\r\n}";
+
+			   len = data.length();
+			   char a[3];
+			   sprintf(a, "%d", len);
+			   req = req + a + "\r\n\r\n";
+			   request.payload = data;
+			   request.req = req;
+			   printf("%s", req.c_str());
+			   printf("%s\n", data.c_str());
+			}
+			esp8266Task::ESP8266HandleHttpReq(request);
+
+		}
+
+		printf("GPS to be sent\n");
+		sensor_gps_data_q = getSharedObject("gps_queue");
+		if (xQueueReceive(sensor_gps_data_q, &gps_q, portMAX_DELAY)) {
+			mESP8266.setReady(false);
+			{
+				char latitude[30];
+				char longitude[30];
+				char altitude[10];
+
+				snprintf(latitude, 15, "%lf", gps_q.Latitude );
+				snprintf(longitude, 15, "%lf", gps_q.Longitude );
+				snprintf(altitude, 15, "%f", gps_q.Altitude );
+
+			   int len;
+			   std:: string req("POST /gps HTTP/1.1\r\nHost: smartenvironmentsjsu.azurewebsites.net\r\ncontent-type: application/json\r\ncontent-length: ");
+			   std:: string data;
+			   data = "{\r\n  \"deviceID\": 1";
+			   data += ",\r\n  \"latitude\": ";
+			   data += latitude;
+			   data += ",\r\n  \"longitude\": ";
+			   data += longitude;
+			   data += ",\r\n  \"altitude\": ";
+			   data += altitude;
+			   data += "\r\n}";
+
+			   len = data.length();
+			   char a[3];
+			   sprintf(a, "%d", len);
+			   req = req + a + "\r\n\r\n";
+			   request.payload = data;
+			   request.req = req;
+			   printf("%s", req.c_str());
+			   printf("%s\n", data.c_str());
+			}
+			esp8266Task::ESP8266HandleHttpReq(request);
+
+				}
 		vTaskDelay(600000);
+		xSemaphoreGive(pressureSem);
 	}
-
-
-
-
-
     return true;
 }

@@ -39,8 +39,14 @@
 
 #include "FreeRTOS.h"
 #include "semphr.h"
+#include "examples/common_includes.hpp"
 
 extern SensorData_s SensorData;
+extern SemaphoreHandle_t UVSem;
+extern SemaphoreHandle_t humiditySem;
+extern SemaphoreHandle_t pressureSem;
+extern SemaphoreHandle_t TXSem;
+extern SemaphoreHandle_t GPSSem;
 
 /**
  * Terminal task is our UART0 terminal that handles our commands into the board.
@@ -167,8 +173,13 @@ class TemperaturePressureSensorTask : public scheduler_task
 
         bool run(void *p)
         {
-            bmp180_service(bmp180Addr, AC1, AC2, AC3, AC4, AC5, AC6, B1, B2, MB, MC, MD, &TempertureData_q);
-            xQueueSend(sensor_Temperature_data_q, &TempertureData_q, 0);
+        	if (xSemaphoreTake(pressureSem, portMAX_DELAY))
+        	{
+        		printf ("=================Got pressureSem\n");
+				bmp180_service(bmp180Addr, AC1, AC2, AC3, AC4, AC5, AC6, B1, B2, MB, MC, MD, &TempertureData_q);
+				xQueueOverwrite( sensor_Temperature_data_q, &TempertureData_q);
+				xSemaphoreGive(UVSem);
+        	}
             return true;
         }
     private:
@@ -197,8 +208,13 @@ class UVLightIRSensorTask : public scheduler_task
         }
         bool run(void *p)
         {
-            readUV(&uv);
-            xQueueSend(sensor_UVLight_data_q, &uv, 0);
+        	if (xSemaphoreTake(UVSem, portMAX_DELAY))
+        	{
+        		printf ("=================Got UVSem\n");
+        		readUV(&uv);
+        		xQueueOverwrite(sensor_UVLight_data_q, &uv);
+        		xSemaphoreGive(humiditySem);
+        	}
             return true;
         }
     private:
@@ -226,13 +242,19 @@ class HumiditySensorTask : public scheduler_task
         }
         bool run(void *p)
         {
-            delay_ms(5000);
-            HTU21DF_Humidity(&humidity);
-            HTU21DF_Temperature(&temperature);
-            humidty_temperature.humidity = humidity;
-            humidty_temperature.temperature = ((temperature)*(9.0/5.0)+32);
-            xQueueSend(sensor_Humidity_data_q, &humidty_temperature, 0);
-            return true;
+        	if (xSemaphoreTake(humiditySem, portMAX_DELAY))
+        	{
+        		printf ("=================Got humiditySem\n");
+
+				delay_ms(5000);
+				HTU21DF_Humidity(&humidity);
+				HTU21DF_Temperature(&temperature);
+				humidty_temperature.humidity = humidity;
+				humidty_temperature.temperature = ((temperature)*(9.0/5.0)+32);
+				xQueueOverwrite(sensor_Humidity_data_q, &humidty_temperature);
+				xSemaphoreGive(GPSSem);
+        	}
+			return true;
         }
     private:
         QueueHandle_t sensor_Humidity_data_q;
@@ -260,7 +282,7 @@ class C02SensorTask : public scheduler_task
         bool run(void *p)
         {
             K30_ReadC02(&co2_data);
-            xQueueSend(sensor_c02_data_q, &co2_data, 0);
+            xQueueOverwrite(sensor_c02_data_q, &co2_data);
             return true;
         }
     private:
@@ -284,8 +306,13 @@ class GPSTask : public scheduler_task
         }
         bool run(void *p)
         {
-            GPS_Read(&gps_q);
-            xQueueSend(sensor_gps_data_q, &gps_q, 0);
+        	if (xSemaphoreTake(GPSSem, portMAX_DELAY))
+			{
+				printf ("=================Got GPSSem\n");
+				GPS_Read(&gps_q);
+				xQueueOverwrite(sensor_gps_data_q, &gps_q);
+				xSemaphoreGive(TXSem);
+			}
             return true;
         }
     private:
@@ -314,6 +341,7 @@ class PrintSensorTask : public scheduler_task
             delay_ms(5000);
             if(xQueueReceive(sensor_Temperature_data_q, &TempertureData_q, 0))
             {
+
                 printf("Temperature(BMP) = %lf\n", TempertureData_q.temperature );
                 printf("Pressure(BMP) = %lf\n", TempertureData_q.pressure);
             }

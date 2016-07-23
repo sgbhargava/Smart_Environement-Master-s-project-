@@ -60,8 +60,30 @@ const char DEVICE_ID = '1';
  *        there is no semaphore configured for this bus and it should be used exclusively by nordic wireless.
  */
 sysStatStruct sys_stat;
+SemaphoreHandle_t UVSem;
+SemaphoreHandle_t humiditySem;
+SemaphoreHandle_t pressureSem;
+SemaphoreHandle_t TXSem;
+SemaphoreHandle_t GPSSem;
+
 int main(void)
 {
+
+	vSemaphoreCreateBinary( pressureSem ); // Create the semaphore
+	xSemaphoreTake(pressureSem, 0);        // Take semaphore after creating it.
+
+	vSemaphoreCreateBinary( UVSem ); // Create the semaphore
+	xSemaphoreTake(UVSem, 0);        // Take semaphore after creating it.
+
+	vSemaphoreCreateBinary( humiditySem ); // Create the semaphore
+	xSemaphoreTake(humiditySem, 0);        // Take semaphore after creating it.
+
+	vSemaphoreCreateBinary( TXSem ); // Create the semaphore
+	xSemaphoreTake(TXSem, 0);        // Take semaphore after creating it.
+
+	vSemaphoreCreateBinary( GPSSem ); // Create the semaphore
+	xSemaphoreTake(GPSSem, 0);        // Take semaphore after creating it.
+
 	lipo_monitor_init();
 	sysStatQh = xQueueCreate(1, sizeof(sysStat));
 
@@ -89,11 +111,11 @@ int main(void)
 
     scheduler_add_task(new HumiditySensorTask(PRIORITY_MEDIUM));
 
-    scheduler_add_task(new C02SensorTask(PRIORITY_MEDIUM));
+    //scheduler_add_task(new C02SensorTask(PRIORITY_MEDIUM));
 
     scheduler_add_task(new GPSTask(PRIORITY_MEDIUM));
 
-#if 1
+#if 0
     scheduler_add_task(new PrintSensorTask(PRIORITY_MEDIUM));
 #endif
 
@@ -168,7 +190,8 @@ int main(void)
         u2.init(ESP8266_BAUD_RATE, ESP8266_RXQ_SIZE, ESP8266_TXQ_SIZE);
         scheduler_add_task(new esp8266Task(Uart2::getInstance(), PRIORITY_MEDIUM));
     #endif
-
+    xSemaphoreGive(pressureSem);
     scheduler_start(); ///< This shouldn't return
+
     return -1;
 }

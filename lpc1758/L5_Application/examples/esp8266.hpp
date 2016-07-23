@@ -116,6 +116,13 @@ private:
         bool mESP8266Echo;     ///< If true, ESP8266 echo is printed using printf()
         char mESP8266Ssid[24]; ///< SSID is saved here
         char mESP8266Key[24];  ///< ESP8266 phrase is saved here
+        QueueHandle_t sensor_gps_data_q, sensor_c02_data_q, sensor_Humidity_data_q,\
+					sensor_UVLight_data_q, sensor_Temperature_data_q;
+		GPSData_s gps_q;
+		TemperatureData_s TempertureData_q;
+		HumidityData_s Humidity_q;
+		float co2Data, humidity, uv;
+		SensorData_s SensorData_q;
         /** @} */
 };
 

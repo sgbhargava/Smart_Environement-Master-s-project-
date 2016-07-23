@@ -23,5 +23,10 @@ typedef struct sysStatStruct
 extern sysStatStruct sys_stat;
 extern QueueHandle_t sysStatQh;
 extern const char DEVICE_ID;
-
+extern sysStatStruct sys_stat;
+extern SemaphoreHandle_t UVSem;
+extern SemaphoreHandle_t humiditySem;
+extern SemaphoreHandle_t pressureSem;
+extern SemaphoreHandle_t TXSem;
+extern SemaphoreHandle_t GPSSem;
 #endif /* L5_APPLICATION_EXAMPLES_COMMON_INCLUDES_HPP_ */

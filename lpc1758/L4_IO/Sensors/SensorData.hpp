@@ -35,4 +35,11 @@ typedef struct HumidityData_s{
         float humidity;
 }HumidityData;
 
+typedef struct SystemHealth_s{
+        float deviceMemUsage;
+        int deviceCPUUsage;
+        float deviceBatteryPercent;
+        float deviceTemp;
+        float deviceVoltage;
+}SystemData;
 #endif /* L4_IO_SENSORS_SENSORDATA_H_ */

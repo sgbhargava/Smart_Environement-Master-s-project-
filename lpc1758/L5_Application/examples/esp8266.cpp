@@ -306,10 +306,9 @@ bool esp8266Task::run(void* p)
 		printf ("=================Got TXSem\n");
 
 		web_req_type request;
-		sysStatStruct status;
 
-
-		if (xQueueReceive(sysStatQh, &status, portMAX_DELAY)) {
+		systemHealth_data_q = getSharedObject("Health_queue");
+		if (xQueueReceive(systemHealth_data_q, &systemData, portMAX_DELAY)) {
 			mESP8266.setReady(false);
 			{
 				char deviceTempStr[6];
@@ -317,11 +316,11 @@ bool esp8266Task::run(void* p)
 				char deviceCPUStr[6];
 				char deviceMemStr[6];
 				char deviceVoltage[6];
-				snprintf(deviceTempStr, 6,"%f",status.deviceTemperature);
-				snprintf(deviceBatStr, 6, "%f", status.deviceBat);
-				snprintf(deviceCPUStr,6 ,"%f", status.deviceCPU);
-				snprintf(deviceMemStr, 6, "%f", status.deviceMem);
-				snprintf(deviceVoltage, 6, "%f", status.deviceVoltage);
+				snprintf(deviceTempStr, 6,"%f",systemData.deviceTemp);
+				snprintf(deviceBatStr, 6, "%f", systemData.deviceBatteryPercent);
+				snprintf(deviceCPUStr,6 ,"%d", systemData.deviceCPUUsage);
+				snprintf(deviceMemStr, 6, "%f", systemData.deviceMemUsage);
+				snprintf(deviceVoltage, 6, "%f", systemData.deviceVoltage);
 
 			   int len;
 			   std:: string req("POST /deviceinfo HTTP/1.1\r\nHost: smartenvironmentsjsu.azurewebsites.net\r\ncontent-type: application/json\r\ncontent-length: ");

@@ -170,7 +170,8 @@ void high_level_init(void)
         LE.setAll(0xFF);
     }
     else {
-        LD.setNumber(TS.getFarenheit());
+//        LD.setNumber(TS.getFarenheit());
+    	LD.clear();
     }
 
     /* After Flash memory is mounted, try to set node address from a file */

@@ -21,13 +21,14 @@ value between 1 and 32 to set the alert threshold to a value between
 */
 void configMAX17043(uint8_t percent)
 {
-  if ((percent >= 32)||(percent == 0))  // Anything 32 or greater will set to 32%
-    i2c.writeReg(FuelGaugeWriteAddr,0x0C, 0x9700);
-  else
-  {
-    uint8_t percentBits = 32 - percent;
-    i2c.writeReg(FuelGaugeWriteAddr,0x0C, (0x9700 | percentBits));
-  }
+	I2C2& i2c = I2C2::getInstance();
+	  if ((percent >= 32)||(percent == 0))  // Anything 32 or greater will set to 32%
+		i2c.writeReg(FuelGaugeWriteAddr,0x0C, 0x9700);
+	  else
+	  {
+		uint8_t percentBits = 32 - percent;
+		i2c.writeReg(FuelGaugeWriteAddr,0x0C, (0x9700 | percentBits));
+	  }
 }
 
 /*
@@ -49,6 +50,7 @@ float percentMAX17043()
 	float percent = 0.0;
 
 	//Read SOC register of MAX17043
+	I2C2& i2c = I2C2::getInstance();
 	i2c.readRegisters(FuelGaugeReadAddr,0x04,temp_reg,2);
 	percent =  temp_reg[0];  // High byte of SOC is percentage
 	percent += (float)(temp_reg[1])/256.0;  // Low byte is 1/256%
@@ -66,7 +68,8 @@ to reduce the error.
 */
 void qsMAX17043()
 {
-  i2c.writeReg(FuelGaugeWriteAddr,0x06, 0x4000);
+	I2C2& i2c = I2C2::getInstance();
+	i2c.writeReg(FuelGaugeWriteAddr,0x06, 0x4000);
 
 }
 
@@ -81,7 +84,7 @@ float vcellMAX17043()
   uint8_t temp_reg[2];
   uint16_t vcell_temp = 0;
   float vcell = 0;
-
+ I2C2& i2c = I2C2::getInstance();
  i2c.readRegisters(FuelGaugeReadAddr, 0x02, temp_reg,2);
   // last 4 bits of vcell are nothing
  vcell_temp = ( ( temp_reg[0] << 8 ) |  temp_reg[1] );
@@ -91,38 +94,27 @@ float vcellMAX17043()
   return vcell;
 }
 
-void fuel_guage_task(void *p)
+void fuel_guage_task(SystemHealth_s *sys_stat)
 {
-	while(1)
-	{
+
 	static float v_cell = 0;
 	static float percentage_cell = 0;
 	//test fuel guage functionality
 	if (LPC_GPIO0->FIOPIN & (1 << 0))
 	{
-		sys_stat.batCriticalFlag = false;
 		//Alert is 1, battery percentage is above threshold.
 		printf(" Battery above threshold\n");
 	}
 	else
 	{
 		printf("Battery low\n");
-		sys_stat.batCriticalFlag = true;
 	}
 	v_cell 								= vcellMAX17043();
 	percentage_cell 					= percentMAX17043();
-	sys_stat.deviceBat 					= percentage_cell;
-	sys_stat.deviceVoltage 				= v_cell;
+	sys_stat->deviceBatteryPercent 		= percentage_cell;
+	sys_stat->deviceVoltage				= v_cell;
 	TemperatureSensor &tempSensor 		= TemperatureSensor::getInstance();
-	sys_stat.deviceTemperature			= tempSensor.getCelsius();
-
-	printf (" Battery voltage = %.02f\t precentage left = %.02f\%\n",v_cell, percentage_cell );
-	if (!xQueueOverwrite(sysStatQh, &sys_stat))
-	{
-		printf("Not sent on the Queue\n");
-	}
-	vTaskDelayMs(600000);
-	}
+	sys_stat->deviceTemp				= tempSensor.getFarenheit();
 }
 
 

@@ -39,10 +39,8 @@
 #include "uart3.hpp"
 #include "string.h"
 
-extern void fuel_guage_task(void *p);
-extern void lipo_monitor_init();
 using namespace std;
-QueueHandle_t sysStatQh = 0;
+
 const char DEVICE_ID = '1';
 
 /**
@@ -59,12 +57,13 @@ const char DEVICE_ID = '1';
  *        In either case, you should avoid using this bus or interfacing to external components because
  *        there is no semaphore configured for this bus and it should be used exclusively by nordic wireless.
  */
-sysStatStruct sys_stat;
+
 SemaphoreHandle_t UVSem;
 SemaphoreHandle_t humiditySem;
 SemaphoreHandle_t pressureSem;
 SemaphoreHandle_t TXSem;
 SemaphoreHandle_t GPSSem;
+SemaphoreHandle_t healthSem;
 
 int main(void)
 {
@@ -84,10 +83,10 @@ int main(void)
 	vSemaphoreCreateBinary( GPSSem ); // Create the semaphore
 	xSemaphoreTake(GPSSem, 0);        // Take semaphore after creating it.
 
-	lipo_monitor_init();
-	sysStatQh = xQueueCreate(1, sizeof(sysStat));
+	vSemaphoreCreateBinary( healthSem ); // Create the semaphore
+	xSemaphoreTake(healthSem, 0);        // Take semaphore after creating it.
 
-    /**
+	/**
      * A few basic tasks for this bare-bone system :
      *      1.  Terminal task provides gateway to interact with the board through UART terminal.
      *      2.  Remote task allows you to use remote control to interact with the board.
@@ -97,9 +96,6 @@ int main(void)
      * such that it can save remote control codes to non-volatile memory.  IR remote
      * control codes can be learned by typing the "learn" terminal command.
      */
-	//set p0.0 as input
-	xTaskCreate(fuel_guage_task, "fuel_guage_task", STACK_BYTES(2048), 0, 1, 0);
-
     scheduler_add_task(new terminalTask(PRIORITY_HIGH));
    // scheduler_add_task(new myWifiTask(PRIORITY_MEDIUM));
     /* Consumes very little CPU, but need highest priority to handle mesh network ACKs */
@@ -115,10 +111,10 @@ int main(void)
 
     scheduler_add_task(new GPSTask(PRIORITY_MEDIUM));
 
-#if 0
+    scheduler_add_task(new GetSystemHealth(PRIORITY_MEDIUM));
+	#if 0
     scheduler_add_task(new PrintSensorTask(PRIORITY_MEDIUM));
-#endif
-
+	#endif
     /* Change "#if 0" to "#if 1" to run period tasks; @see period_callbacks.cpp */
     #if 0
     scheduler_add_task(new periodicSchedulerTask());

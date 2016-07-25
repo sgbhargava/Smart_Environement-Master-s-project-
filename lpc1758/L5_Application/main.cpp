@@ -32,6 +32,8 @@
 #include "uart2.hpp"
 #include "uart3.hpp"
 #include "string.h"
+#include "ssp0.h"
+#include "gpio.hpp"
 
 /**
  * The main() creates tasks or "threads".  See the documentation of scheduler_task class at scheduler_task.hpp
@@ -50,7 +52,6 @@
 
 int main(void)
 {
-
     /**
      * A few basic tasks for this bare-bone system :
      *      1.  Terminal task provides gateway to interact with the board through UART terminal.
@@ -61,10 +62,10 @@ int main(void)
      * such that it can save remote control codes to non-volatile memory.  IR remote
      * control codes can be learned by typing the "learn" terminal command.
      */
-    scheduler_add_task(new terminalTask(PRIORITY_HIGH));
+    //scheduler_add_task(new terminalTask(PRIORITY_HIGH));
 
     /* Consumes very little CPU, but need highest priority to handle mesh network ACKs */
-    scheduler_add_task(new wirelessTask(PRIORITY_CRITICAL));
+    //scheduler_add_task(new wirelessTask(PRIORITY_CRITICAL));
 
     scheduler_add_task(new TemperaturePressureSensorTask(PRIORITY_MEDIUM));
 
@@ -77,6 +78,8 @@ int main(void)
     scheduler_add_task(new GPSTask(PRIORITY_MEDIUM));
 
     scheduler_add_task(new GetSystemHealth(PRIORITY_MEDIUM));
+
+    scheduler_add_task(new SunTrackerData(PRIORITY_MEDIUM));
 
     scheduler_add_task(new PrintSensorTask(PRIORITY_MEDIUM));
 

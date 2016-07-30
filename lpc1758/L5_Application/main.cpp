@@ -38,6 +38,8 @@
 #include "uart2.hpp"
 #include "uart3.hpp"
 #include "string.h"
+#include "ssp0.h"
+#include "gpio.hpp"
 
 using namespace std;
 
@@ -67,6 +69,7 @@ SemaphoreHandle_t healthSem;
 
 int main(void)
 {
+
 	LPC_GPIO2->FIODIR |= (1 << 7);
 	LPC_GPIO2->FIOSET = (1 << 7);
 	delay_ms(1000);
@@ -90,6 +93,9 @@ int main(void)
 	xSemaphoreTake(healthSem, 0);        // Take semaphore after creating it.
 
 	/**
+=======
+    /**
+>>>>>>> Sensors
      * A few basic tasks for this bare-bone system :
      *      1.  Terminal task provides gateway to interact with the board through UART terminal.
      *      2.  Remote task allows you to use remote control to interact with the board.
@@ -99,8 +105,13 @@ int main(void)
      * such that it can save remote control codes to non-volatile memory.  IR remote
      * control codes can be learned by typing the "learn" terminal command.
      */
+
     scheduler_add_task(new terminalTask(PRIORITY_HIGH));
    // scheduler_add_task(new myWifiTask(PRIORITY_MEDIUM));
+
+    //scheduler_add_task(new terminalTask(PRIORITY_HIGH));
+
+
     /* Consumes very little CPU, but need highest priority to handle mesh network ACKs */
     //scheduler_add_task(new wirelessTask(PRIORITY_CRITICAL));
 
@@ -115,6 +126,9 @@ int main(void)
     scheduler_add_task(new GPSTask(PRIORITY_MEDIUM));
 
     scheduler_add_task(new GetSystemHealth(PRIORITY_MEDIUM));
+
+    scheduler_add_task(new SunTrackerData(PRIORITY_MEDIUM));
+
 	#if 0
     scheduler_add_task(new PrintSensorTask(PRIORITY_MEDIUM));
 	#endif
@@ -189,7 +203,7 @@ int main(void)
         u2.init(ESP8266_BAUD_RATE, ESP8266_RXQ_SIZE, ESP8266_TXQ_SIZE);
         scheduler_add_task(new esp8266Task(Uart2::getInstance(), PRIORITY_MEDIUM));
     #endif
-        printf("Giving pressureSem\n");
+    printf("Giving pressureSem\n");
     xSemaphoreGive(pressureSem);
     scheduler_start(); ///< This shouldn't return
 

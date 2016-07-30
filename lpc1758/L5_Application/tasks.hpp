@@ -38,6 +38,8 @@
 #include "utilities.h"
 #include "stdio.h"
 #include "string.h"
+#include "gpio.hpp"
+#include "ssp1.h"
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "examples/common_includes.hpp"
@@ -162,7 +164,7 @@ class TemperaturePressureSensorTask : public scheduler_task
 {
     public:
         TemperaturePressureSensorTask(uint8_t priority) :
-            scheduler_task("Temperature_Pressure", 2048, priority)
+            scheduler_task("Temperature_Pressure", 1024, priority)
         {
             sensor_Temperature_data_q = xQueueCreate(1, sizeof(TempertureData_q));
             addSharedObject("Temperature_queue", sensor_Temperature_data_q);
@@ -202,7 +204,7 @@ class UVLightIRSensorTask : public scheduler_task
 {
     public:
         UVLightIRSensorTask(uint8_t priority) :
-            scheduler_task("UVLight_IR", 2048, priority)
+            scheduler_task("UVLight_IR", 1024, priority)
         {
             sensor_UVLight_data_q = xQueueCreate(1, sizeof(float));
             addSharedObject("UVLight_queue", sensor_UVLight_data_q);
@@ -236,7 +238,7 @@ class HumiditySensorTask : public scheduler_task
 {
     public:
         HumiditySensorTask(uint8_t priority) :
-            scheduler_task("Humidity", 2048, priority)
+            scheduler_task("Humidity", 1024, priority)
         {
             sensor_Humidity_data_q = xQueueCreate(1, sizeof(humidty_temperature));
             addSharedObject("Humidity_queue", sensor_Humidity_data_q);
@@ -275,7 +277,7 @@ class C02SensorTask : public scheduler_task
 {
     public:
         C02SensorTask(uint8_t priority) :
-            scheduler_task("C02", 2048, priority)
+            scheduler_task("C02", 1024, priority)
         {
             sensor_c02_data_q = xQueueCreate(1, sizeof(float));
             addSharedObject("CO2_queue", sensor_c02_data_q);
@@ -301,7 +303,7 @@ class GPSTask : public scheduler_task
 {
     public:
         GPSTask(uint8_t priority) :
-            scheduler_task("GPS", 4096, priority)
+            scheduler_task("GPS", 2048, priority)
         {
             sensor_gps_data_q = xQueueCreate(1, sizeof(GPSData_s));
             addSharedObject("gps_queue", sensor_gps_data_q);
@@ -385,11 +387,80 @@ class GetSystemHealth : public scheduler_task
         SystemHealth_s systemData;
 };
 
+class SunTrackerData : public scheduler_task
+{
+    public:
+        SunTrackerData(uint8_t priority) :
+            scheduler_task("SunTrackerData", 512, priority), cs(LPC1758_GPIO_Type::P0_0)
+        {
+            Byte1 = 0; Byte0 = 0;
+            sun_data_q = xQueueCreate(1, sizeof(SunTracker));
+            addSharedObject("Sun_queue", sun_data_q);
+        }
+        bool init()
+        {
+            ssp1_init();
+            cs.setAsOutput();
+            cs.setHigh();
+            return true;
+        }
+        bool run(void *p)
+        {
+            //Read Channel 0
+            delay_ms(1);
+            cs.setLow();
+            ssp1_exchange_byte(0x01);
+            Byte1 = ssp1_exchange_byte(0x80);
+            Byte0 = ssp1_exchange_byte(0x00);
+            sundata.ch0 = ((Byte1 & 0x03) << 8) + Byte0;
+            delay_ms(1);
+            cs.setHigh();
+
+            //Read Channel 1
+            delay_ms(1);
+            cs.setLow();
+            ssp1_exchange_byte(0x01);
+            Byte1 = ssp1_exchange_byte(0x90);
+            Byte0 = ssp1_exchange_byte(0x00);
+            sundata.ch1 = ((Byte1 & 0x03) << 8) + Byte0;
+            delay_ms(1);
+            cs.setHigh();
+
+            //Read Channel 2
+            delay_ms(1);
+            cs.setLow();
+            ssp1_exchange_byte(0x01);
+            Byte1 = ssp1_exchange_byte(0xA0);
+            Byte0 = ssp1_exchange_byte(0x00);
+            sundata.ch2 = ((Byte1 & 0x03) << 8) + Byte0;
+            delay_ms(1);
+            cs.setHigh();
+
+            //Read Channel 3
+            delay_ms(1);
+            cs.setLow();
+            ssp1_exchange_byte(0x01);
+            Byte1 = ssp1_exchange_byte(0xB0);
+            Byte0 = ssp1_exchange_byte(0x00);
+            sundata.ch3 = ((Byte1 & 0x03) << 8) + Byte0;
+            delay_ms(1);
+            cs.setHigh();
+
+            xQueueSend(sun_data_q, &sundata, 0);
+            return true;
+        }
+    private:
+        char Byte1, Byte0;
+        SunTracker sundata;
+        GPIO cs;
+        QueueHandle_t sun_data_q;
+};
+
 class PrintSensorTask : public scheduler_task
 {
     public:
         PrintSensorTask(uint8_t priority) :
-            scheduler_task("Print", 2048, priority)
+            scheduler_task("Print", 1024, priority)
         {
             sensor_gps_data_q = getSharedObject("gps_queue");
             sensor_c02_data_q = getSharedObject("CO2_queue");
@@ -397,6 +468,7 @@ class PrintSensorTask : public scheduler_task
             sensor_UVLight_data_q = getSharedObject("UVLight_queue");
             sensor_Temperature_data_q = getSharedObject("Temperature_queue");
             systemHealth_data_q = getSharedObject("Health_queue");
+            sunData_q = getSharedObject("Sun_queue");
             co2Data = 0;
             humidity = 0;
             uv = 0;
@@ -433,19 +505,28 @@ class PrintSensorTask : public scheduler_task
             if(xQueueReceive(systemHealth_data_q, &systemData, 0))
             {
                 printf("Memory total usage = %d\n", systemData.deviceMemUsage);
-                printf("CPU total usage = %d\n", systemData.deviceCPUUsage);
+                printf("CPU total usage = %lf\n", systemData.deviceCPUUsage);
+            }
+            if(xQueueReceive(sunData_q, &sunData, 0))
+            {
+                printf("Channel 0 = %d\n", sunData.ch0);
+                printf("Channel 1 = %d\n", sunData.ch1);
+                printf("Channel 2 = %d\n", sunData.ch2);
+                printf("Channel 3 = %d\n", sunData.ch3);
             }
             return true;
         }
     private:
         QueueHandle_t sensor_gps_data_q, sensor_c02_data_q, sensor_Humidity_data_q,
-        sensor_UVLight_data_q, sensor_Temperature_data_q, systemHealth_data_q;
+        sensor_UVLight_data_q, sensor_Temperature_data_q, systemHealth_data_q,
+        sunData_q;
         GPSData_s gps_q;
         TemperatureData_s TempertureData_q;
         HumidityData_s Humidity_q;
         float co2Data, humidity, uv;
         SensorData_s SensorData_q;
         SystemHealth_s systemData;
+        SunTracker sunData;
 };
 
 #endif /* TASKS_HPP_ */

@@ -180,6 +180,9 @@ class TemperaturePressureSensorTask : public scheduler_task
         {
         	if (xSemaphoreTake(pressureSem, portMAX_DELAY))
         	{
+        		LPC_GPIO0->FIOSET = (1 << 1);
+        		printf("Turning on sensors\n");
+
         		printf ("=================Got pressureSem\n");
 				bmp180_service(bmp180Addr, AC1, AC2, AC3, AC4, AC5, AC6, B1, B2, MB, MC, MD, &TempertureData_q);
 				xQueueOverwrite( sensor_Temperature_data_q, &TempertureData_q);
@@ -250,13 +253,12 @@ class HumiditySensorTask : public scheduler_task
         	if (xSemaphoreTake(humiditySem, portMAX_DELAY))
         	{
         		printf ("=================Got humiditySem\n");
-
-				delay_ms(5000);
 				HTU21DF_Humidity(&humidity);
 				HTU21DF_Temperature(&temperature);
 				humidty_temperature.humidity = humidity;
 				humidty_temperature.temperature = ((temperature)*(9.0/5.0)+32);
 				xQueueOverwrite(sensor_Humidity_data_q, &humidty_temperature);
+				printf("Gave tx sem\n");
 				xSemaphoreGive(GPSSem);
         	}
 			return true;

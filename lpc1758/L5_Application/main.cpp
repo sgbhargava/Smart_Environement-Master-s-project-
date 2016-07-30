@@ -67,6 +67,9 @@ SemaphoreHandle_t healthSem;
 
 int main(void)
 {
+	LPC_GPIO2->FIODIR |= (1 << 7);
+	LPC_GPIO2->FIOSET = (1 << 7);
+	delay_ms(1000);
 
 	vSemaphoreCreateBinary( pressureSem ); // Create the semaphore
 	xSemaphoreTake(pressureSem, 0);        // Take semaphore after creating it.
@@ -186,6 +189,7 @@ int main(void)
         u2.init(ESP8266_BAUD_RATE, ESP8266_RXQ_SIZE, ESP8266_TXQ_SIZE);
         scheduler_add_task(new esp8266Task(Uart2::getInstance(), PRIORITY_MEDIUM));
     #endif
+        printf("Giving pressureSem\n");
     xSemaphoreGive(pressureSem);
     scheduler_start(); ///< This shouldn't return
 

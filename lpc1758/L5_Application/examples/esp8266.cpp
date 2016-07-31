@@ -307,6 +307,7 @@ bool esp8266Task::run(void* p)
 		printf ("=================Got TXSem\n");
 		for(uint8_t i = 0; i< 15; i++)
 		{
+			delay_ms(100);
 			sunData_q = getSharedObject("Sun_queue");
 			 if(xQueueReceive(sunData_q, &sunData, 0))
 			{
@@ -505,11 +506,13 @@ bool esp8266Task::run(void* p)
 			   printf("%s\n", data.c_str());
 			}
 			esp8266Task::ESP8266HandleHttpReq(request);
-			LPC_GPIO2->FIOCLR = (1 << 7);
-			vTaskDelay(600000);
-			LPC_GPIO2->FIOSET = (1 << 7);
-			xSemaphoreGive(pressureSem);
+
 				}
+		LPC_GPIO2->FIOCLR = (1 << 7);
+		vTaskDelay(600000);
+		LPC_GPIO2->FIOSET = (1 << 7);
+		xSemaphoreGive(pressureSem);
+
 	}
 
     return true;

@@ -304,7 +304,7 @@ class GPSTask : public scheduler_task
 {
     public:
         GPSTask(uint8_t priority) :
-            scheduler_task("GPS", 2048, priority)
+            scheduler_task("GPS", 5*512, priority)
         {
             sensor_gps_data_q = xQueueCreate(1, sizeof(GPSData_s));
             addSharedObject("gps_queue", sensor_gps_data_q);

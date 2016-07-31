@@ -52,6 +52,7 @@ extern SemaphoreHandle_t pressureSem;
 extern SemaphoreHandle_t TXSem;
 extern SemaphoreHandle_t GPSSem;
 extern SemaphoreHandle_t healthSem, sunSem;
+extern SemaphoreHandle_t co2Sem;
 extern void lipo_monitor_init();
 extern void fuel_guage_task(SystemHealth_s *sys_stat);
 
@@ -261,7 +262,7 @@ class HumiditySensorTask : public scheduler_task
 				humidty_temperature.humidity = humidity;
 				humidty_temperature.temperature = ((temperature)*(9.0/5.0)+32);
 				xQueueOverwrite(sensor_Humidity_data_q, &humidty_temperature);
-				xSemaphoreGive(GPSSem);
+				xSemaphoreGive(co2Sem);
         	}
 			return true;
         }
@@ -290,8 +291,13 @@ class C02SensorTask : public scheduler_task
         }
         bool run(void *p)
         {
+        	if (xSemaphoreTake(co2Sem, portMAX_DELAY))
+        	{
+        		printf ("=================Got co2Sem\n");
             K30_ReadC02(&co2_data);
             xQueueOverwrite(sensor_c02_data_q, &co2_data);
+            xSemaphoreGive(healthSem);
+        	}
             return true;
         }
     private:
@@ -322,7 +328,7 @@ class GPSTask : public scheduler_task
 				printf("\nreturned from gps task\n");
 				printf("wrote to GPS queue\n");
 				xQueueOverwrite(sensor_gps_data_q, &gps_q);
-				xSemaphoreGive(healthSem);
+				xSemaphoreGive(co2Sem);
 			}
             return true;
         }

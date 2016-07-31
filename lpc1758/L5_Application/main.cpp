@@ -66,6 +66,7 @@ SemaphoreHandle_t pressureSem;
 SemaphoreHandle_t TXSem;
 SemaphoreHandle_t GPSSem;
 SemaphoreHandle_t healthSem, sunSem;
+SemaphoreHandle_t co2Sem;
 
 int main(void)
 {
@@ -121,14 +122,14 @@ int main(void)
 
     scheduler_add_task(new HumiditySensorTask(PRIORITY_MEDIUM));
 
-    //scheduler_add_task(new C02SensorTask(PRIORITY_MEDIUM));
+    scheduler_add_task(new C02SensorTask(PRIORITY_MEDIUM));
 
-    scheduler_add_task(new GPSTask(PRIORITY_MEDIUM));
+  //  scheduler_add_task(new GPSTask(PRIORITY_MEDIUM));
 
     scheduler_add_task(new GetSystemHealth(PRIORITY_MEDIUM));
 
 
-    scheduler_add_task(new SunTrackerData(PRIORITY_MEDIUM));
+   // scheduler_add_task(new SunTrackerData(PRIORITY_MEDIUM));
 
 
 	#if 0

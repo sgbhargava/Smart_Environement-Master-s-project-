@@ -99,8 +99,8 @@ bool esp8266Task::ESP8266Connect(void)
 		printf("Unable to configure device as AP and station\n");
 	}
 	ESP8266Flush();
-	mESP8266.putline("AT+CWJAP=\"iPhone\",\"12345678\"");
-	//mESP8266.putline("AT+CWJAP=\"Through Silence\",\"jjjjmmyy16\"");
+	//mESP8266.putline("AT+CWJAP=\"iPhone\",\"12345678\"");
+	mESP8266.putline("AT+CWJAP=\"Through Silence\",\"jjjjmmyy16\"");
 	//mESP8266.putline("AT+CWJAP=\"tigers dumplings\",\"welovetiger\"");
 	mESP8266.gets((char*)rsp(), rsp.getCapacity(), 1000);
 	while(!(rsp.beginsWithIgnoreCase("ok")))
@@ -130,10 +130,10 @@ bool esp8266Task::ESP8266IsConnected(void)
     STR_ON_STACK(rsp, 128);
     mESP8266.gets((char*)rsp(), rsp.getCapacity(), 1000);
     printf("\t%s\n",rsp());
-    mESP8266.gets((char*)rsp(), rsp.getCapacity(), 1000);
-   // if(!rsp.beginsWithIgnoreCase("+CWJAP:\"Through Silence\"")) {
+    //mESP8266.gets((char*)rsp(), rsp.getCapacity(), 1000);
+    if(!rsp.beginsWithIgnoreCase("+CWJAP:\"Through Silence\"")) {
     //if(!rsp.beginsWithIgnoreCase("+CWJAP:\"tigers dumplings\"")) {
-    if(!rsp.beginsWithIgnoreCase("+CWJAP:\"iPhone\"")) {
+    //if(!rsp.beginsWithIgnoreCase("+CWJAP:\"iPhone\"")) {
     	return false;
     }
 
@@ -307,7 +307,7 @@ bool esp8266Task::run(void* p)
 	if (xSemaphoreTake(TXSem, 0))
 	{
 		printf ("=================Got TXSem\n");
-		for(uint8_t i = 0; i< 100; i++)
+		/*for(uint8_t i = 0; i< 100; i++)
 		{
 			xSemaphoreGive(sunSem);
 			sunData_q = getSharedObject("Sun_queue");
@@ -378,7 +378,7 @@ bool esp8266Task::run(void* p)
 				  }
 				  delay_ms(dtime);
 			}
-		}
+		}*/
 		web_req_type request;
 
 
@@ -398,7 +398,7 @@ bool esp8266Task::run(void* p)
 				snprintf(deviceVoltage, 6, "%f", systemData.deviceVoltage);
 
 			   int len;
-			   std:: string req("POST /info/deviceOne HTTP/1.1\r\nHost: smartenvironmentsjsu.azurewebsites.net\r\ncontent-type: application/json\r\ncontent-length: ");
+			   std:: string req("POST /info/deviceThree HTTP/1.1\r\nHost: smartenvironmentsjsu.azurewebsites.net\r\ncontent-type: application/json\r\ncontent-length: ");
 			   std:: string data;
 			   data = "{\r\n  \"deviceTemp\": ";
 			   data += deviceTempStr;
@@ -435,6 +435,9 @@ bool esp8266Task::run(void* p)
 		sensor_Temperature_data_q = getSharedObject("Temperature_queue");
 		xQueueReceive(sensor_Temperature_data_q, &TempertureData_q, 0);
 
+		sensor_Temperature_data_q = getSharedObject("CO2_queue");
+		xQueueReceive(sensor_c02_data_q, &co2Data, 0);
+
 		char humidityData[15];
 		snprintf(humidityData, 15, "%lf", Humidity_q.humidity);
 
@@ -447,8 +450,10 @@ bool esp8266Task::run(void* p)
 		char pressureData[15];
 		snprintf(pressureData, 15, "%lf", TempertureData_q.pressure);
 
+		char carbondioxideData[15];
+		snprintf(pressureData, 15, "%lf", co2Data);
 		int len;
-		std:: string req("POST /sensor/deviceOne HTTP/1.1\r\nHost: smartenvironmentsjsu.azurewebsites.net\r\ncontent-type: application/json\r\ncontent-length: ");
+		std:: string req("POST /sensor/deviceThree HTTP/1.1\r\nHost: smartenvironmentsjsu.azurewebsites.net\r\ncontent-type: application/json\r\ncontent-length: ");
 		std:: string data;
 
 		data += "{\r\n  \"humidityData\": ";
@@ -459,6 +464,9 @@ bool esp8266Task::run(void* p)
 
 		data += ",\r\n  \"ultravioletData\": ";
 		data += ultravioletData;
+
+		data += ",\r\n  \"carbondioxideData\": ";
+		data += carbondioxideData;
 
 		data += ",\r\n  \"pressureData\": ";
 		data += pressureData;
@@ -477,7 +485,7 @@ bool esp8266Task::run(void* p)
 
 		esp8266Task::ESP8266HandleHttpReq(request);
 
-		printf("GPS to be sent\n");
+	/*	printf("GPS to be sent\n");
 		sensor_gps_data_q = getSharedObject("gps_queue");
 		if (xQueueReceive(sensor_gps_data_q, &gps_q, 0)) {
 			mESP8266.setReady(false);
@@ -491,7 +499,7 @@ bool esp8266Task::run(void* p)
 				snprintf(altitude, 15, "%f", gps_q.Altitude );
 
 			   int len;
-			   std:: string req("POST /gps/deviceOne HTTP/1.1\r\nHost: smartenvironmentsjsu.azurewebsites.net\r\ncontent-type: application/json\r\ncontent-length: ");
+			   std:: string req("POST /gps/deviceThree HTTP/1.1\r\nHost: smartenvironmentsjsu.azurewebsites.net\r\ncontent-type: application/json\r\ncontent-length: ");
 			   std:: string data;
 			   data = "{\r\n  \"latitude\": ";
 			   data += latitude;
@@ -512,9 +520,10 @@ bool esp8266Task::run(void* p)
 			}
 			esp8266Task::ESP8266HandleHttpReq(request);
 
-				}
+				}*/
 		LPC_GPIO2->FIOCLR = (1 << 7);
 		vTaskDelay(600000);
+		printf("wakingup\n");
 		LPC_GPIO2->FIOSET = (1 << 7);
 		xSemaphoreGive(pressureSem);
 	}

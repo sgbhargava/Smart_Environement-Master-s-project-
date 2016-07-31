@@ -43,6 +43,7 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "examples/common_includes.hpp"
+#include "lpc_pwm.hpp"
 
 extern SensorData_s SensorData;
 extern SemaphoreHandle_t UVSem;
@@ -446,7 +447,7 @@ class SunTrackerData : public scheduler_task
             delay_ms(1);
             cs.setHigh();
 
-            xQueueSend(sun_data_q, &sundata, 0);
+            xQueueOverwrite(sun_data_q, &sundata);
             return true;
         }
     private:
@@ -455,6 +456,7 @@ class SunTrackerData : public scheduler_task
         GPIO cs;
         QueueHandle_t sun_data_q;
 };
+
 
 class PrintSensorTask : public scheduler_task
 {
@@ -476,8 +478,8 @@ class PrintSensorTask : public scheduler_task
 
         bool run(void *p)
         {
-            delay_ms(5000);
-            if(xQueueReceive(sensor_Temperature_data_q, &TempertureData_q, 0))
+            delay_ms(1000);
+           /* if(xQueueReceive(sensor_Temperature_data_q, &TempertureData_q, 0))
             {
 
                 printf("Temperature(BMP) = %lf\n", TempertureData_q.temperature );
@@ -507,7 +509,7 @@ class PrintSensorTask : public scheduler_task
                 printf("Memory total usage = %d\n", systemData.deviceMemUsage);
                 printf("CPU total usage = %lf\n", systemData.deviceCPUUsage);
             }
-            if(xQueueReceive(sunData_q, &sunData, 0))
+         */   if(xQueueReceive(sunData_q, &sunData, 0))
             {
                 printf("Channel 0 = %d\n", sunData.ch0);
                 printf("Channel 1 = %d\n", sunData.ch1);

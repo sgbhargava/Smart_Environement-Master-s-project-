@@ -93,9 +93,6 @@ int main(void)
 	xSemaphoreTake(healthSem, 0);        // Take semaphore after creating it.
 
 	/**
-=======
-    /**
->>>>>>> Sensors
      * A few basic tasks for this bare-bone system :
      *      1.  Terminal task provides gateway to interact with the board through UART terminal.
      *      2.  Remote task allows you to use remote control to interact with the board.
@@ -115,6 +112,7 @@ int main(void)
     /* Consumes very little CPU, but need highest priority to handle mesh network ACKs */
     //scheduler_add_task(new wirelessTask(PRIORITY_CRITICAL));
 
+
     scheduler_add_task(new TemperaturePressureSensorTask(PRIORITY_MEDIUM));
 
     scheduler_add_task(new UVLightIRSensorTask(PRIORITY_MEDIUM));
@@ -127,7 +125,9 @@ int main(void)
 
     scheduler_add_task(new GetSystemHealth(PRIORITY_MEDIUM));
 
+
     scheduler_add_task(new SunTrackerData(PRIORITY_MEDIUM));
+
 
 	#if 0
     scheduler_add_task(new PrintSensorTask(PRIORITY_MEDIUM));

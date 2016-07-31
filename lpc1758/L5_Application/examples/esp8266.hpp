@@ -117,14 +117,21 @@ private:
         char mESP8266Ssid[24]; ///< SSID is saved here
         char mESP8266Key[24];  ///< ESP8266 phrase is saved here
         QueueHandle_t sensor_gps_data_q, sensor_c02_data_q, sensor_Humidity_data_q,\
-					sensor_UVLight_data_q, sensor_Temperature_data_q, systemHealth_data_q;
+					sensor_UVLight_data_q, sensor_Temperature_data_q, systemHealth_data_q,sunData_q;
 		GPSData_s gps_q;
 		TemperatureData_s TempertureData_q;
 		HumidityData_s Humidity_q;
 		float co2Data, humidity, uv;
 		SensorData_s SensorData_q;
         SystemHealth_s systemData;
-        /** @} */
+        SunTracker sunData;
+        int LT,LD,RT,RD;
+        int avt,avd,avl,avr, dvert,dhoriz;
+        float servov,servoh;
+        const float MIN_PWM = 2.5;	//TOP
+        const float MAX_PWM = 10.0;
+        const int tol = 10;
+        const int dtime = 20;
 };
 
 

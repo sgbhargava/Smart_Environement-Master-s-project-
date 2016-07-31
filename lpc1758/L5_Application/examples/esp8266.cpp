@@ -99,8 +99,8 @@ bool esp8266Task::ESP8266Connect(void)
 		printf("Unable to configure device as AP and station\n");
 	}
 	ESP8266Flush();
-	//mESP8266.putline("AT+CWJAP=\"Through Silence\",\"jjjjmmyy16\"");
-	mESP8266.putline("AT+CWJAP=\"tigers dumplings\",\"welovetiger\"");
+	mESP8266.putline("AT+CWJAP=\"Through Silence\",\"jjjjmmyy16\"");
+	//mESP8266.putline("AT+CWJAP=\"tigers dumplings\",\"welovetiger\"");
 	mESP8266.gets((char*)rsp(), rsp.getCapacity(), 1000);
 	while(!(rsp.beginsWithIgnoreCase("ok")))
 	{
@@ -130,8 +130,8 @@ bool esp8266Task::ESP8266IsConnected(void)
     mESP8266.gets((char*)rsp(), rsp.getCapacity(), 1000);
     printf("\t%s\n",rsp());
     mESP8266.gets((char*)rsp(), rsp.getCapacity(), 1000);
-    //if(!rsp.beginsWithIgnoreCase("+CWJAP:\"Through Silence\"")) {
-    if(!rsp.beginsWithIgnoreCase("+CWJAP:\"tigers dumplings\"")) {
+    if(!rsp.beginsWithIgnoreCase("+CWJAP:\"Through Silence\"")) {
+    //if(!rsp.beginsWithIgnoreCase("+CWJAP:\"tigers dumplings\"")) {
     	return false;
     }
 
@@ -305,7 +305,75 @@ bool esp8266Task::run(void* p)
 	if (xSemaphoreTake(TXSem, 0))
 	{
 		printf ("=================Got TXSem\n");
+		for(uint8_t i = 0; i< 15; i++)
+		{
+			sunData_q = getSharedObject("Sun_queue");
+			 if(xQueueReceive(sunData_q, &sunData, 0))
+			{
+				  PWM vertical_servo(PWM::pwm2 , 50);
+				  PWM horizontal_servo(PWM::pwm1, 50);
+				  LD = sunData.ch0;
+				  RD = sunData.ch1;
+				  RT = sunData.ch2;
+				  LT = sunData.ch3;
 
+				  //printf("BL= %d\tBR= %d\tTR= %d\tTL= %d\n", LD,RD,RT,LT);
+				  avt = (LT + RT)/2;
+				  avd = (LD + RD)/2;
+				  avl = (LT + LD)/2;
+				  avr = (RT + RD)/2;
+
+				  dvert = avt -avd;
+				  dhoriz = avl - avr;
+				  printf("\ndvert %d \t dhoriz %d\n", dvert, dhoriz);
+				  if(-1 * tol > dvert || dvert > tol )//check if the difference is in tolerable range
+				  {
+					  if(avt > avd)
+					  {
+	//do down
+						  printf("going down\n");
+						  servov -= 0.1;
+						  if(servov > MAX_PWM)
+						  {
+							  servov = MAX_PWM;
+						  }
+					  }
+					  else if(avt < avd)
+					  {
+						  printf("going up\n");
+						  servov += 0.1;
+						  if(servov < MIN_PWM)
+						  {
+							  servov = MIN_PWM;
+						  }
+					  }
+					  vertical_servo.set(servov);
+				  }
+				  if(-1 * tol > dhoriz || dhoriz > tol)
+				  {
+					  if (avl > avr)
+					  {
+						  printf("Turning left\n");
+						  servoh -= 0.1;
+						  if(servoh < MIN_PWM)
+						  {
+							  servoh = MIN_PWM;
+						  }
+					  }
+					  else if (avl < avr)
+					  {
+						  printf("Turning right\n");
+						  servoh += 0.1;
+						  if(servoh > MAX_PWM)
+						  {
+							  servoh = MAX_PWM;
+						  }
+					  }
+					  horizontal_servo.set(servoh);
+				  }
+				  delay_ms(dtime);
+			}
+		}
 		web_req_type request;
 
 		systemHealth_data_q = getSharedObject("Health_queue");
@@ -443,8 +511,6 @@ bool esp8266Task::run(void* p)
 			xSemaphoreGive(pressureSem);
 				}
 	}
-
-
 
     return true;
 }

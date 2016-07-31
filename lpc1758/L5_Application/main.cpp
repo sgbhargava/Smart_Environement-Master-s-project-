@@ -65,7 +65,7 @@ SemaphoreHandle_t humiditySem;
 SemaphoreHandle_t pressureSem;
 SemaphoreHandle_t TXSem;
 SemaphoreHandle_t GPSSem;
-SemaphoreHandle_t healthSem;
+SemaphoreHandle_t healthSem, sunSem;
 
 int main(void)
 {
@@ -92,6 +92,8 @@ int main(void)
 	vSemaphoreCreateBinary( healthSem ); // Create the semaphore
 	xSemaphoreTake(healthSem, 0);        // Take semaphore after creating it.
 
+	vSemaphoreCreateBinary( sunSem ); // Create the semaphore
+	xSemaphoreTake(sunSem, 0);
 	/**
      * A few basic tasks for this bare-bone system :
      *      1.  Terminal task provides gateway to interact with the board through UART terminal.

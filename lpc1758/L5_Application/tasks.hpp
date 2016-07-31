@@ -51,7 +51,7 @@ extern SemaphoreHandle_t humiditySem;
 extern SemaphoreHandle_t pressureSem;
 extern SemaphoreHandle_t TXSem;
 extern SemaphoreHandle_t GPSSem;
-extern SemaphoreHandle_t healthSem;
+extern SemaphoreHandle_t healthSem, sunSem;
 extern void lipo_monitor_init();
 extern void fuel_guage_task(SystemHealth_s *sys_stat);
 
@@ -261,7 +261,6 @@ class HumiditySensorTask : public scheduler_task
 				humidty_temperature.humidity = humidity;
 				humidty_temperature.temperature = ((temperature)*(9.0/5.0)+32);
 				xQueueOverwrite(sensor_Humidity_data_q, &humidty_temperature);
-				printf("Gave tx sem\n");
 				xSemaphoreGive(GPSSem);
         	}
 			return true;
@@ -320,11 +319,9 @@ class GPSTask : public scheduler_task
 			{
 				printf ("=================Got GPSSem\n");
 				GPS_Read(&gps_q);
-				printf("returned from gps task\n");
-				if( (gps_q.Latitude > -999 && gps_q.Longitude > -999) && (gps_q.Altitude > -999) )
-				{
-				    xQueueOverwrite(sensor_gps_data_q, &gps_q);
-				}
+				printf("\nreturned from gps task\n");
+				printf("wrote to GPS queue\n");
+				xQueueOverwrite(sensor_gps_data_q, &gps_q);
 				xSemaphoreGive(healthSem);
 			}
             return true;
@@ -377,6 +374,7 @@ class GetSystemHealth : public scheduler_task
 				 }
 				//Get LIPO data
 				fuel_guage_task(&systemData);
+				printf("returned from fuelguage task\n");
 				xQueueSend(systemHealth_data_q, &systemData, 0);
 				xSemaphoreGive(TXSem);
         	}
@@ -410,6 +408,9 @@ class SunTrackerData : public scheduler_task
         }
         bool run(void *p)
         {
+        	if (xSemaphoreTake(sunSem, portMAX_DELAY))
+        	        	{
+        	        		printf("=================Got sunSem\n");
             //Read Channel 0
             delay_ms(1);
             cs.setLow();
@@ -451,6 +452,7 @@ class SunTrackerData : public scheduler_task
             cs.setHigh();
 
             xQueueOverwrite(sun_data_q, &sundata);
+        	}
             return true;
         }
     private:

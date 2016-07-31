@@ -49,6 +49,8 @@ void GPS_Read(GPSData_s * gps)
                     gps->Latitude = latitude;
                     gps->Longitude = longitude;
                     gps->Altitude = Altitude;
+                    printf("returning altitude: %d", gps->Altitude);
+                    printf("lat = %f, long = %f\n", gps->Latitude, gps->Longitude);
                     return;
                 }
             }

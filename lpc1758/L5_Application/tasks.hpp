@@ -321,7 +321,10 @@ class GPSTask : public scheduler_task
 				printf ("=================Got GPSSem\n");
 				GPS_Read(&gps_q);
 				printf("returned from gps task\n");
-				xQueueOverwrite(sensor_gps_data_q, &gps_q);
+				if( (gps_q.Latitude > -999 && gps_q.Longitude > -999) && (gps_q.Altitude > -999) )
+				{
+				    xQueueOverwrite(sensor_gps_data_q, &gps_q);
+				}
 				xSemaphoreGive(healthSem);
 			}
             return true;

@@ -360,6 +360,7 @@ class GetSystemHealth : public scheduler_task
 				TaskStatus_t status[maxTasks];
 				uint32_t totalRunTime = 0;
 				uint32_t tasksRunTime = 0;
+				systemData.deviceCPUUsage = 0;
 
 				//Get Memory usage total
 				sys_get_mem_info_str(buffer);
@@ -369,15 +370,22 @@ class GetSystemHealth : public scheduler_task
 				systemData.deviceMemUsage = systemData.deviceMemUsage/655.36;
 				//Get Total CPU usage
 				const unsigned portBASE_TYPE ArraySize = uxTaskGetSystemState(&status[0], maxTasks, &totalRunTime);
-				for (unsigned i = 0; i < ArraySize; i++) {
-					TaskStatus_t *e = &status[i];
-						tasksRunTime += e->ulRunTimeCounter;
-						if(strcmp(e->pcTaskName, "IDLE") == 0)
-						{
-							const uint32_t cpuPercent = (0 == totalRunTime) ? 0 : e->ulRunTimeCounter / (totalRunTime/100);
-							systemData.deviceCPUUsage = 100 - cpuPercent;
-						}
-				 }
+				for(int j = 0; j < 10; j++)
+				{
+                    for (unsigned i = 0; i < ArraySize; i++) {
+                        TaskStatus_t *e = &status[i];
+                            tasksRunTime += e->ulRunTimeCounter;
+                            if(strcmp(e->pcTaskName, "IDLE") == 0)
+                            {
+                                const uint32_t cpuPercent = (0 == totalRunTime) ? 0 : e->ulRunTimeCounter / (totalRunTime/100);
+                                systemData.deviceCPUUsage = 100 - cpuPercent;
+                            }
+                     }
+                    if(systemData.deviceCPUUsage >= 0 && systemData.deviceCPUUsage <= 100)
+                        break;
+                    else
+                        systemData.deviceCPUUsage = 0;
+				}
 				//Get LIPO data
 				fuel_guage_task(&systemData);
 				printf("returned from fuelguage task\n");

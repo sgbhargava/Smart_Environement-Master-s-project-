@@ -36,10 +36,11 @@ typedef struct HumidityData_s{
 }HumidityData;
 
 typedef struct SystemHealth_s{
-        int deviceMemUsage;
-        float deviceCPUUsage;
+        float deviceMemUsage;
+        int deviceCPUUsage;
         float deviceBatteryPercent;
         float deviceTemp;
+        float deviceVoltage;
 }SystemData;
 
 typedef struct SunTracker_s {

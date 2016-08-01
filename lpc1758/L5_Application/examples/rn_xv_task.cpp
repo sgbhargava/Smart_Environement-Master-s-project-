@@ -225,7 +225,7 @@ void wifiTask::wifiSendTestCmd(void)
     wifiFlush();
     wifiEnterCmdMode();
     wifiFlush();
-    mWifi.putline("ver");
+    mWifi.putline("AT");
 }
 
 bool wifiTask::wifiInitBaudRate(void)

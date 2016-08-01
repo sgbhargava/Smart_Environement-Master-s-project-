@@ -17,6 +17,13 @@
 #define CHECKSUM_MSB        0x9F
 #define CHECKSUM_LSB        0x25
 
+#define C02INIT             0x41
+#define INITADDRESSMSB      0x00
+#define INITADDRESSLSB      0x60
+#define INITLEN             0x01
+#define INITCHECKSUM_MSB    0xE8
+#define INITCHECKSUM_LSB    0x53
+
 void K30_init();
 void K30_ReadC02(float * co2Data);
 

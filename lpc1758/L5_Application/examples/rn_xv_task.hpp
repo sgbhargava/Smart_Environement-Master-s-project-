@@ -48,10 +48,10 @@ typedef struct {
     SemaphoreHandle_t req_done_signal; ///< After web-request is made, this semaphore is given (if not zero)
 } web_req_type;
 
-#define WIFI_PORT       "5555"  ///< Port number to configure for TCP/IP Server
-#define WIFI_BAUD_RATE  230400  ///< Baud rate you wish to use (it will auto-detect and change to this)
-#define WIFI_SSID       "ssid"  ///< Your SSID
-#define WIFI_KEY        "key"   ///< Your WPA2 pass-phrase
+#define WIFI_PORT       "80"  ///< Port number to configure for TCP/IP Server
+#define WIFI_BAUD_RATE  115200  ///< Baud rate you wish to use (it will auto-detect and change to this)
+#define WIFI_SSID       "Through Silence"  ///< Your SSID
+#define WIFI_KEY        "jjjjmm16"   ///< Your WPA2 pass-phrase
 #define WIFI_RXQ_SIZE   512     ///< Size of UART's RXQ
 #define WIFI_TXQ_SIZE   512     ///< Size of UART's TXQ
 #define WIFI_SHR_OBJ    "webrq" ///< The shared object name of this task's Web reqeust queue

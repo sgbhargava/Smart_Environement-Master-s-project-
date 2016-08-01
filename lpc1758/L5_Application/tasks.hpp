@@ -40,9 +40,21 @@
 #include "string.h"
 #include "gpio.hpp"
 #include "ssp1.h"
-
 #include "FreeRTOS.h"
 #include "semphr.h"
+#include "examples/common_includes.hpp"
+#include "lpc_pwm.hpp"
+
+extern SensorData_s SensorData;
+extern SemaphoreHandle_t UVSem;
+extern SemaphoreHandle_t humiditySem;
+extern SemaphoreHandle_t pressureSem;
+extern SemaphoreHandle_t TXSem;
+extern SemaphoreHandle_t GPSSem;
+extern SemaphoreHandle_t healthSem, sunSem;
+extern SemaphoreHandle_t co2Sem;
+extern void lipo_monitor_init();
+extern void fuel_guage_task(SystemHealth_s *sys_stat);
 
 
 /**
@@ -170,8 +182,17 @@ class TemperaturePressureSensorTask : public scheduler_task
 
         bool run(void *p)
         {
-            bmp180_service(bmp180Addr, AC1, AC2, AC3, AC4, AC5, AC6, B1, B2, MB, MC, MD, &TempertureData_q);
-            xQueueSend(sensor_Temperature_data_q, &TempertureData_q, 0);
+        	if (xSemaphoreTake(pressureSem, portMAX_DELAY))
+        	{
+        		LPC_GPIO0->FIOSET = (1 << 1);
+        		printf("Turning on sensors\n");
+
+        		printf ("=================Got pressureSem\n");
+				bmp180_service(bmp180Addr, AC1, AC2, AC3, AC4, AC5, AC6, B1, B2, MB, MC, MD, &TempertureData_q);
+				printf("Temperature task = %f | %f\n", TempertureData_q.temperature, TempertureData_q.pressure);
+				xQueueOverwrite( sensor_Temperature_data_q, &TempertureData_q);
+				xSemaphoreGive(UVSem);
+        	}
             return true;
         }
     private:
@@ -200,8 +221,13 @@ class UVLightIRSensorTask : public scheduler_task
         }
         bool run(void *p)
         {
-            readUV(&uv);
-            xQueueSend(sensor_UVLight_data_q, &uv, 0);
+        	if (xSemaphoreTake(UVSem, portMAX_DELAY))
+        	{
+        		printf ("=================Got UVSem\n");
+        		readUV(&uv);
+        		xQueueOverwrite(sensor_UVLight_data_q, &uv);
+        		xSemaphoreGive(humiditySem);
+        	}
             return true;
         }
     private:
@@ -229,13 +255,17 @@ class HumiditySensorTask : public scheduler_task
         }
         bool run(void *p)
         {
-            delay_ms(5000);
-            HTU21DF_Humidity(&humidity);
-            HTU21DF_Temperature(&temperature);
-            humidty_temperature.humidity = humidity;
-            humidty_temperature.temperature = ((temperature)*(9.0/5.0)+32);
-            xQueueSend(sensor_Humidity_data_q, &humidty_temperature, 0);
-            return true;
+        	if (xSemaphoreTake(humiditySem, portMAX_DELAY))
+        	{
+        		printf ("=================Got humiditySem\n");
+				HTU21DF_Humidity(&humidity);
+				HTU21DF_Temperature(&temperature);
+				humidty_temperature.humidity = humidity;
+				humidty_temperature.temperature = ((temperature)*(9.0/5.0)+32);
+				xQueueOverwrite(sensor_Humidity_data_q, &humidty_temperature);
+				xSemaphoreGive(co2Sem);
+        	}
+			return true;
         }
     private:
         QueueHandle_t sensor_Humidity_data_q;
@@ -262,8 +292,14 @@ class C02SensorTask : public scheduler_task
         }
         bool run(void *p)
         {
-            K30_ReadC02(&co2_data);
-            xQueueSend(sensor_c02_data_q, &co2_data, 0);
+        	if (xSemaphoreTake(co2Sem, portMAX_DELAY))
+        	{
+                printf ("=================Got co2Sem\n");
+                K30_ReadC02(&co2_data);
+                printf("CO2 Data Function = %f\n", co2_data);
+                xQueueOverwrite(sensor_c02_data_q, &co2_data);
+                xSemaphoreGive(healthSem);
+        	}
             return true;
         }
     private:
@@ -275,7 +311,7 @@ class GPSTask : public scheduler_task
 {
     public:
         GPSTask(uint8_t priority) :
-            scheduler_task("GPS", 2048, priority)
+            scheduler_task("GPS", 5*512, priority)
         {
             sensor_gps_data_q = xQueueCreate(1, sizeof(GPSData_s));
             addSharedObject("gps_queue", sensor_gps_data_q);
@@ -287,8 +323,15 @@ class GPSTask : public scheduler_task
         }
         bool run(void *p)
         {
-            GPS_Read(&gps_q);
-            xQueueSend(sensor_gps_data_q, &gps_q, 0);
+        	if (xSemaphoreTake(GPSSem, portMAX_DELAY))
+			{
+				printf ("=================Got GPSSem\n");
+				GPS_Read(&gps_q);
+				printf("\nreturned from gps task\n");
+				printf("wrote to GPS queue\n");
+				xQueueOverwrite(sensor_gps_data_q, &gps_q);
+				xSemaphoreGive(co2Sem);
+			}
             return true;
         }
     private:
@@ -307,37 +350,43 @@ class GetSystemHealth : public scheduler_task
             total_mem = 0;
             systemHealth_data_q = xQueueCreate(1, sizeof(SystemHealth_s));
             addSharedObject("Health_queue", systemHealth_data_q);
+            lipo_monitor_init();
         }
 
         bool run(void *p)
         {
-            const unsigned portBASE_TYPE maxTasks = 16;
-            TaskStatus_t status[maxTasks];
-            uint32_t totalRunTime = 0;
-            uint32_t tasksRunTime = 0;
+        	if (xSemaphoreTake(healthSem, portMAX_DELAY))
+        	{
+        		printf("=================Got healthSem\n");
+				const unsigned portBASE_TYPE maxTasks = 16;
+				TaskStatus_t status[maxTasks];
+				uint32_t totalRunTime = 0;
+				uint32_t tasksRunTime = 0;
 
-            //Get Memory usage total
-            sys_get_mem_info_str(buffer);
-            sscanf(buffer, "Memory Information: \nGlobal Used   :  %d\nmalloc Used   :  %d", &global_mem, &malloc_mem);
-            total_mem = global_mem + malloc_mem;
-            systemData.deviceMemUsage = (total_mem *100)/64000;
-
-            //Get Total CPU usage
-            delay_ms(50);
-            const unsigned portBASE_TYPE ArraySize = uxTaskGetSystemState(&status[0], maxTasks, &totalRunTime);
-            for (unsigned i = 0; i < ArraySize; i++) {
-                TaskStatus_t *e = &status[i];
-                    tasksRunTime += e->ulRunTimeCounter;
-                    if(strcmp(e->pcTaskName, "IDLE") == 0)
-                    {
-                        const uint32_t cpuPercent = (0 == totalRunTime) ? 0 : e->ulRunTimeCounter / (totalRunTime/100);
-                        systemData.deviceCPUUsage = 100 - cpuPercent;
-                    }
-             }
-            //Get LIPO data
-
-            xQueueSend(systemHealth_data_q, &systemData, 0);
-            return true;
+				//Get Memory usage total
+				sys_get_mem_info_str(buffer);
+				sscanf(buffer, "Memory Information: \nGlobal Used   :  %d\nmalloc Used   :  %d", &global_mem, &malloc_mem);
+				total_mem = global_mem + malloc_mem;
+				systemData.deviceMemUsage = total_mem;
+				systemData.deviceMemUsage = systemData.deviceMemUsage/655.36;
+				//Get Total CPU usage
+				const unsigned portBASE_TYPE ArraySize = uxTaskGetSystemState(&status[0], maxTasks, &totalRunTime);
+				for (unsigned i = 0; i < ArraySize; i++) {
+					TaskStatus_t *e = &status[i];
+						tasksRunTime += e->ulRunTimeCounter;
+						if(strcmp(e->pcTaskName, "IDLE") == 0)
+						{
+							const uint32_t cpuPercent = (0 == totalRunTime) ? 0 : e->ulRunTimeCounter / (totalRunTime/100);
+							systemData.deviceCPUUsage = 100 - cpuPercent;
+						}
+				 }
+				//Get LIPO data
+				fuel_guage_task(&systemData);
+				printf("returned from fuelguage task\n");
+				xQueueSend(systemHealth_data_q, &systemData, 0);
+				xSemaphoreGive(TXSem);
+        	}
+			return true;
         }
     private:
         char buffer[512];
@@ -367,6 +416,9 @@ class SunTrackerData : public scheduler_task
         }
         bool run(void *p)
         {
+        	if (xSemaphoreTake(sunSem, portMAX_DELAY))
+        	        	{
+        	        		printf("=================Got sunSem\n");
             //Read Channel 0
             delay_ms(1);
             cs.setLow();
@@ -407,7 +459,8 @@ class SunTrackerData : public scheduler_task
             delay_ms(1);
             cs.setHigh();
 
-            xQueueSend(sun_data_q, &sundata, 0);
+            xQueueOverwrite(sun_data_q, &sundata);
+        	}
             return true;
         }
     private:
@@ -416,6 +469,7 @@ class SunTrackerData : public scheduler_task
         GPIO cs;
         QueueHandle_t sun_data_q;
 };
+
 
 class PrintSensorTask : public scheduler_task
 {
@@ -437,9 +491,10 @@ class PrintSensorTask : public scheduler_task
 
         bool run(void *p)
         {
-            delay_ms(5000);
-            if(xQueueReceive(sensor_Temperature_data_q, &TempertureData_q, 0))
+            delay_ms(1000);
+           /* if(xQueueReceive(sensor_Temperature_data_q, &TempertureData_q, 0))
             {
+
                 printf("Temperature(BMP) = %lf\n", TempertureData_q.temperature );
                 printf("Pressure(BMP) = %lf\n", TempertureData_q.pressure);
             }
@@ -467,7 +522,7 @@ class PrintSensorTask : public scheduler_task
                 printf("Memory total usage = %d\n", systemData.deviceMemUsage);
                 printf("CPU total usage = %lf\n", systemData.deviceCPUUsage);
             }
-            if(xQueueReceive(sunData_q, &sunData, 0))
+         */   if(xQueueReceive(sunData_q, &sunData, 0))
             {
                 printf("Channel 0 = %d\n", sunData.ch0);
                 printf("Channel 1 = %d\n", sunData.ch1);
